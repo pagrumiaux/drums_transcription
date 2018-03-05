@@ -13,12 +13,12 @@ from math import fmod, floor
 import time
 import xml.etree.ElementTree as et
 
-folder_rbma = "/users/grumiaux/Documents/rbma_13/"
-folder_smt = "/users/grumiaux/Documents/SMT_DRUMS/"
+folder_rbma = "/users/grumiaux/Documents/stage/rbma_13/"
+folder_smt = "/users/grumiaux/Documents/stage/SMT_DRUMS/"
 
 class Dataset:
     def __init__(self):
-        self.data = {'mel_spectrogram': [], 'BD_target': [], 'SD_target': [], 'HH_target': [], 'beats_target': [], 'downbeats_target': []}
+        self.data = {'mel_spectrogram': [], 'BD_target': [], 'SD_target': [], 'HH_target': [], 'beats_target': [], 'downbeats_target': [], 'BD_annotations': [], 'SD_annotations': [], 'HH_annotations': [], 'beats_annotations': [], 'downbeats_annotations': []}
         
     def loadDataset(self):
         audio_names_rbma = self.extractAudioNamesRbma()
@@ -27,10 +27,15 @@ class Dataset:
 #            print(audio)
             mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations = self.extractMelSpectrogramAndAnnotationsRbma(audio)
             self.data['mel_spectrogram'].append(mel_spectrogram)
+            self.data['BD_annotations'].append(BD_annotations)
             self.data['BD_target'].append(self.annotationsToTargetFunctions(BD_annotations, mel_spectrogram.shape[1]))
+            self.data['SD_annotations'].append(SD_annotations)
             self.data['SD_target'].append(self.annotationsToTargetFunctions(SD_annotations, mel_spectrogram.shape[1]))
+            self.data['HH_annotations'].append(HH_annotations)
             self.data['HH_target'].append(self.annotationsToTargetFunctions(HH_annotations, mel_spectrogram.shape[1]))
+            self.data['beats_annotations'].append(beats_annotations)
             self.data['beats_target'].append(self.annotationsToTargetFunctions(beats_annotations, mel_spectrogram.shape[1]))
+            self.data['downbeats_annotations'].append(downbeats_annotations)
             self.data['downbeats_target'].append(self.annotationsToTargetFunctions(downbeats_annotations, mel_spectrogram.shape[1]))
         print("Rbma dataset loaded.")
         
@@ -39,8 +44,11 @@ class Dataset:
         for audio in audio_names_smt:
             mel_spectrogram, BD_annotations, SD_annotations, HH_annotations = self.extractMelSpectrogramAndAnnotationsSmt(audio)
             self.data['mel_spectrogram'].append(mel_spectrogram)
+            self.data['BD_annotations'].append(BD_annotations)
             self.data['BD_target'].append(self.annotationsToTargetFunctions(BD_annotations, mel_spectrogram.shape[1]))
+            self.data['SD_annotations'].append(SD_annotations)
             self.data['SD_target'].append(self.annotationsToTargetFunctions(SD_annotations, mel_spectrogram.shape[1]))
+            self.data['HH_annotations'].append(HH_annotations)
             self.data['HH_target'].append(self.annotationsToTargetFunctions(HH_annotations, mel_spectrogram.shape[1]))
         print('Smt dataset loaded.')
         
@@ -52,11 +60,11 @@ class Dataset:
         return audio_names_rbma
     
     def extractAudioNamesSmt(self):
-        folder_smt_audio = folder_smt + "annotation_xml"
-        audio_names_smt = [f[:-4] for f in os.listdir(folder_smt_audio) if f.endswith('.xml')]
+        folder_smt_audio = folder_smt + "data/mel"
+        audio_names_smt = [f[:-4] for f in os.listdir(folder_smt_audio) if f.endswith('.npy')]
         return audio_names_smt
         
-    def extractMelSpectrogramAndAnnotationsRbma(self, audio_name, sr = 44100s):
+    def extractMelSpectrogramAndAnnotationsRbma(self, audio_name, sr = 44100):
         """ Compute the mel spectrogram of ONE track and extract the annotations
             input:
                 name of the single audio track to extraction information without extension
@@ -101,7 +109,11 @@ class Dataset:
         mel_spectrogram = np.load(folder_smt + "data/mel/" + audio_name + ".npy")
         
         # annotations extraction
-        tree = et.parse(folder_smt + "annotation_xml/" + audio_name + ".xml")
+        if audio_name.endswith('KD') or audio_name.endswith('SD') or audio_name.endswith('HH'):
+            xml_file = folder_smt + "annotation_xml/" + audio_name[:-2] + "MIX.xml"
+        else:
+            xml_file = folder_smt + "annotation_xml/" + audio_name + ".xml"
+        tree = et.parse(xml_file)
         for event in tree.iter('event'):
             instrument = event[3]
             if instrument.text == 'KD':
@@ -110,10 +122,20 @@ class Dataset:
                 SD_annotations.append(float(event[1].text))
             elif instrument.text == 'HH':
                 HH_annotations.append(float(event[1].text))
+        
+        if audio_name.endswith("KD"):
+            SD_annotations = []
+            HH_annotations = []
+        elif audio_name.endswith("SD"):
+            KD_annotations = []
+            HH_annotations = []
+        elif audio_name.endswith("HH"):
+            KD_annotations = []
+            SD_annotations = []
                 
         return mel_spectrogram, BD_annotations, SD_annotations, HH_annotations
     
-    def annotationsToTargetFunctions(self, annotations, n_frames, sr= 44100, frame_rate = 100):
+    def annotationsToTargetFunctions(self, annotations, n_frames, sr = 44100, frame_rate = 100):
         """ Transform annotations list into target functions
             input:
                 annotations : list of float that represents the positions in seconds

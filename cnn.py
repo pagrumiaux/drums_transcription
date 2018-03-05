@@ -26,7 +26,7 @@ params = {'dim_x': 84,
 dataset = Dataset()
 dataset.loadDataset()
 
-# %%three fold cross validation
+#%% three fold cross validation
 list_IDs = dataset.generate_IDs(params['task'])
 n_ID = len(list_IDs)
 split_train_test = 535698
@@ -34,6 +34,9 @@ train_index = int(0.85*split_train_test)
 
 test_IDs = list_IDs[split_train_test:]
 temp_IDs = list_IDs[:split_train_test]
+
+training_IDs = temp_IDs[:train_index]
+validation_IDs = temp_IDs[train_index:]
 
 #%%
 # Generators
