@@ -10,7 +10,7 @@ import numpy as np
 
 class DataGenerator(object):
     'Generates data for Keras'
-    def __init__(self, dim_x, dim_y, task, batch_size = 8, shuffle = True, context_frames = 25, sequential_frames = 100):
+    def __init__(self, dim_x, dim_y, task, batch_size = 8, shuffle = True, context_frames = 25, sequential_frames = 100, difference_spectrogram = True):
         'Initialization'
         self.dim_x = dim_x
         self.dim_y = dim_y
@@ -19,6 +19,7 @@ class DataGenerator(object):
         self.task = task
         self.context_frames = context_frames
         self.sequential_frames = sequential_frames
+        self.diff = difference_spectrogram
     
     def generate(self, dataset, list_IDs):
         'Generates batches of samples'
@@ -45,6 +46,10 @@ class DataGenerator(object):
                 feature = np.concatenate((spectro[:, ID[1]-padding:], np.zeros((spectro.shape[0], padding-(audio_spectro_length-ID[1])+1))), axis=1)
             else:
                 feature = spectro[:, (ID[1]-padding):(ID[1]+padding+1)]
+            
+            if self.diff == True:
+                feature_diff = np.concatenate((np.empty((feature.shape[0], 1)), np.diff(feature)), axis=1)
+                feature = np.concatenate((feature, np.abs(feature_diff)), axis=0)
                 
         elif self.task == 'RNN':
             feature = spectro[:, ID[1]:ID[1]+self.sequential_frames].T

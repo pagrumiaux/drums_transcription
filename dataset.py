@@ -18,13 +18,14 @@ folder_smt = "/users/grumiaux/Documents/stage/SMT_DRUMS/"
 
 class Dataset:
     def __init__(self):
-        self.data = {'mel_spectrogram': [], 'BD_target': [], 'SD_target': [], 'HH_target': [], 'beats_target': [], 'downbeats_target': [], 'BD_annotations': [], 'SD_annotations': [], 'HH_annotations': [], 'beats_annotations': [], 'downbeats_annotations': []}
+        self.data = {'audio_name': [], 'mel_spectrogram': [], 'BD_target': [], 'SD_target': [], 'HH_target': [], 'beats_target': [], 'downbeats_target': [], 'BD_annotations': [], 'SD_annotations': [], 'HH_annotations': [], 'beats_annotations': [], 'downbeats_annotations': []}
         
     def loadDataset(self):
         audio_names_rbma = self.extractAudioNamesRbma()
 #        print(len(audio_names_rbma))
         for audio in audio_names_rbma:
 #            print(audio)
+            self.data['audio_name'].append(audio)
             mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations = self.extractMelSpectrogramAndAnnotationsRbma(audio)
             self.data['mel_spectrogram'].append(mel_spectrogram)
             self.data['BD_annotations'].append(BD_annotations)
@@ -40,8 +41,9 @@ class Dataset:
         print("Rbma dataset loaded.")
         
         audio_names_smt = self.extractAudioNamesSmt()
-        print(len(audio_names_smt))
+#        print(len(audio_names_smt))
         for audio in audio_names_smt:
+            self.data['audio_name'].append(audio)
             mel_spectrogram, BD_annotations, SD_annotations, HH_annotations = self.extractMelSpectrogramAndAnnotationsSmt(audio)
             self.data['mel_spectrogram'].append(mel_spectrogram)
             self.data['BD_annotations'].append(BD_annotations)
@@ -61,7 +63,9 @@ class Dataset:
     
     def extractAudioNamesSmt(self):
         folder_smt_audio = folder_smt + "data/mel"
-        audio_names_smt = [f[:-4] for f in os.listdir(folder_smt_audio) if f.endswith('.npy')]
+        audio_names_smt_mix = [f[:-4] for f in os.listdir(folder_smt_audio) if f.endswith('MIX.npy')]
+        audio_names_smt_other = [f[:-4] for f in os.listdir(folder_smt_audio) if f.endswith('.npy') and not f.endswith('MIX.npy')]
+        audio_names_smt = audio_names_smt_mix + audio_names_smt_other
         return audio_names_smt
         
     def extractMelSpectrogramAndAnnotationsRbma(self, audio_name, sr = 44100):
