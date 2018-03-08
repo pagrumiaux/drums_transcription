@@ -34,12 +34,13 @@ class DataGenerator(object):
                 yield X, y
                
     def extract_feature(self, dataset, ID):
+#        print(ID)
         audio_ID = ID[0]
         spectro = dataset.data['mel_spectrogram'][audio_ID]
+        audio_spectro_length = spectro.shape[1]
         
         if self.task == 'CNN' or self.task == 'CBRNN':
             padding = int((self.context_frames-1)/2)
-            audio_spectro_length = spectro.shape[1]
             if ID[1] < padding:
                 feature = np.concatenate((np.zeros((spectro.shape[0], (padding-ID[1]))), spectro[:, :ID[1]+padding+1]), axis=1)
             elif ID[1] >= audio_spectro_length - padding:
@@ -48,12 +49,22 @@ class DataGenerator(object):
                 feature = spectro[:, (ID[1]-padding):(ID[1]+padding+1)]
             
             if self.diff == True:
-                feature_diff = np.concatenate((np.empty((feature.shape[0], 1)), np.diff(feature)), axis=1)
-                feature = np.concatenate((feature, np.abs(feature_diff)), axis=0)
+                feature_diff = np.concatenate((np.zeros((feature.shape[0], 1)), np.diff(feature)), axis=1)
+                feature_diff = np.clip(feature_diff, a_min=0, a_max=None)
+                feature = np.concatenate((feature, feature_diff), axis=0)
                 
         elif self.task == 'RNN':
-            feature = spectro[:, ID[1]:ID[1]+self.sequential_frames].T
-            
+            if ID[1] >= audio_spectro_length - self.sequential_frames:
+                feature = np.concatenate((spectro[:, ID[1]:], np.zeros((spectro.shape[0], self.sequential_frames-(audio_spectro_length-ID[1])))), axis=1)
+            else:
+                feature = spectro[:, ID[1]:ID[1]+self.sequential_frames]
+            if self.diff == True:
+                feature_diff = np.concatenate((np.zeros((feature.shape[0], 1)), np.diff(feature)), axis=1)
+                feature_diff = np.clip(feature_diff, a_min=0, a_max=None)
+                feature = np.concatenate((feature, feature_diff), axis=0)
+            feature = feature.T
+#            print(feature.min(), feature.max()) 
+                       
             
         return feature            
                 
@@ -80,10 +91,17 @@ class DataGenerator(object):
             X = np.empty((self.batch_size, self.dim_x, self.dim_y))
             y = np.empty((self.batch_size, self.dim_x, 3), dtype=int)
             for i, ID in enumerate(list_IDs_temp):
+#                print(ID)
+                audio_spectro_length = dataset.data['mel_spectrogram'][ID[0]].shape[1]
                 X[i, :, :] = self.extract_feature(dataset, ID)
-                y[i, :, 0] = dataset.data['BD_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
-                y[i, :, 1] = dataset.data['SD_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
-                y[i, :, 2] = dataset.data['HH_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
+                if ID[1] >= audio_spectro_length - self.sequential_frames:
+                    y[i, :, 0] = np.concatenate((dataset.data['BD_target'][ID[0]][ID[1]:], np.zeros((100-(audio_spectro_length-ID[1])))))
+                    y[i, :, 1] = np.concatenate((dataset.data['SD_target'][ID[0]][ID[1]:], np.zeros((100-(audio_spectro_length-ID[1])))))
+                    y[i, :, 2] = np.concatenate((dataset.data['HH_target'][ID[0]][ID[1]:], np.zeros((100-(audio_spectro_length-ID[1])))))
+                else:
+                    y[i, :, 0] = dataset.data['BD_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
+                    y[i, :, 1] = dataset.data['SD_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
+                    y[i, :, 2] = dataset.data['HH_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
 #                y[i, :, 0] = dataset.data['beats_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
 #                y[i, :, 1] = dataset.data['downbeats_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
                 

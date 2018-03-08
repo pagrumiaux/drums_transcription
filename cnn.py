@@ -11,7 +11,7 @@ from keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten, BatchNor
 from keras.models import Sequential
 from dataset import Dataset
 from dataGenerator import DataGenerator
-from keras.callbacks import ReduceLROnPlateau
+from keras.callbacks import ReduceLROnPlateau, ModelCheckpoint
 import numpy as np
 import keras.backend as K
 
@@ -29,49 +29,43 @@ dataset = Dataset()
 dataset.loadDataset()
 
 #%% three fold cross validation
-list_IDs = dataset.generate_IDs(params['task'])
+list_IDs = dataset.generate_IDs(params['task'], dataFilter='smt')
 n_ID = len(list_IDs)
 
 #%%
-ID_first_solo = 0 # find solo drums IDs for training
+ID_first_solo = 0 # find solo drums IDs to put it in training IDs list
 for i in range(n_ID):
     if list_IDs[i][0] == index_first_solo_drums:
         ID_first_solo = i
         break
 
 #%% distribute IDs per track block in training or testing sets
-list_mix_first_IDs = [i for i in range(index_first_solo_drums)] 
+list_mix_first_IDs = [i for i in range(index_first_solo_drums)] # list of IDs[0] of MIX
 np.random.shuffle(list_mix_first_IDs) # we shuffle solo drums IDs for picking them randomly
 
-temp_IDs = list_IDs[ID_first_solo:]
-test_IDs = []
+temp_IDs = list_IDs[ID_first_solo:] #temporary list of IDs (will be for training and validation). We start putting solo drums for training in this list
+test_IDs = [] #empty list of IDs for evaluation
 
-while len(temp_IDs) < int(2*n_ID/3):
-#    print(len(temp_IDs))
-#    print(list_mix_first_IDs[-4:-1])
-    temp_IDs = temp_IDs + [ID for ID in list_IDs if ID[0] == list_mix_first_IDs[-1]]
-    list_mix_first_IDs = list_mix_first_IDs[:-1]
-#    input("pause")
+while len(temp_IDs) < int(2*n_ID/3): # two third of the IDs will be for training and validation
+    temp_IDs = temp_IDs + [ID for ID in list_IDs if ID[0] == list_mix_first_IDs[-1]] #we select all IDs of one song each loop
+    list_mix_first_IDs = list_mix_first_IDs[:-1] # we remove this ID[0] of the list
     
-for first_ID in list_mix_first_IDs:
+for first_ID in list_mix_first_IDs: # we put the rest of IDs in the evaluation IDs list
     test_IDs = test_IDs + [ID for ID in list_IDs if ID[0] == first_ID]
 
-#print(len(temp_IDs))
-#print(len(test_IDs))
-
-train_valid_split = int(0.85*len(temp_IDs))
+train_valid_split = int(0.85*len(temp_IDs)) # we divide the temporary list into training and validation (85% for training)
 training_IDs = temp_IDs[:train_valid_split]
 validation_IDs = temp_IDs[train_valid_split:]
 
-#%%
-# Generators
-training_generator = DataGenerator(**params).generate(dataset, training_IDs)
-validation_generator = DataGenerator(**params).generate(dataset, validation_IDs)
+##%%
+## Generators
+#training_generator = DataGenerator(**params).generate(dataset, training_IDs)
+#validation_generator = DataGenerator(**params).generate(dataset, validation_IDs)
 
 #%%
 ### model creation ###
 input_shape = (168, 25, 1)
-epochs = 30
+epochs = 10
 
 model = Sequential()
 # block A
@@ -94,10 +88,12 @@ model.add(Dense(3, activation='sigmoid'))
 optimizer = keras.optimizers.RMSprop(lr=0.001)
 model.compile(loss=keras.losses.binary_crossentropy, optimizer=optimizer, metrics=['accuracy'])
 
-LRPlateau = ReduceLROnPlateau(factor=0.5, verbose=1)
+LRPlateau = ReduceLROnPlateau(factor=0.5, verbose=1, patience=10)
+Checkpoint = ModelCheckpoint("weights.{epoch:02d}-{val_loss:.2f}.hdf5", verbose=1)
 
 #%%
 for i in range(epochs):
+    print("=== Epoch n°" + str(i))
     np.random.seed(i)
     np.random.shuffle(temp_IDs)
     training_IDs = temp_IDs[:train_valid_split]

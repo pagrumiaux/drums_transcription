@@ -8,7 +8,6 @@ Created on Wed Feb 21 15:51:03 2018
 
 import os
 import numpy as np
-import librosa
 from math import fmod, floor
 import time
 import xml.etree.ElementTree as et
@@ -89,11 +88,11 @@ class Dataset:
             lines = f.readlines()
             for line in lines:
                 if int(line.split()[1]) == 0:
-                    BD_annotations.append(float(line.split()[0]))
+                    BD_annotations.append(max(float(line.split()[0]), 0))
                 elif int(line.split()[1]) == 1:
-                    SD_annotations.append(float(line.split()[0]))
+                    SD_annotations.append(max(float(line.split()[0]), 0))
                 elif int(line.split()[1]) == 2:
-                    HH_annotations.append(float(line.split()[0]))
+                    HH_annotations.append(max(float(line.split()[0]), 0))
         with open(folder_rbma + "annotations/beats/" + audio_name + ".txt", 'r') as f: # beats and downbeats annotations extraction
             lines = f.readlines()
             for line in lines:
@@ -121,20 +120,20 @@ class Dataset:
         for event in tree.iter('event'):
             instrument = event[3]
             if instrument.text == 'KD':
-                BD_annotations.append(float(event[1].text))
+                BD_annotations.append(max(float(event[1].text), 0))
             elif instrument.text == 'SD':
-                SD_annotations.append(float(event[1].text))
+                SD_annotations.append(max(float(event[1].text), 0))
             elif instrument.text == 'HH':
-                HH_annotations.append(float(event[1].text))
+                HH_annotations.append(max(float(event[1].text), 0))
         
         if audio_name.endswith("KD"):
             SD_annotations = []
             HH_annotations = []
         elif audio_name.endswith("SD"):
-            KD_annotations = []
+            BD_annotations = []
             HH_annotations = []
         elif audio_name.endswith("HH"):
-            KD_annotations = []
+            BD_annotations = []
             SD_annotations = []
                 
         return mel_spectrogram, BD_annotations, SD_annotations, HH_annotations
@@ -157,16 +156,15 @@ class Dataset:
     def generate_IDs(self, task, context_frames = 25, sequential_frames = 100, withBeatsAnnotations = False, dataFilter = None):
         list_IDs = []
         n_audio = len(self.data['mel_spectrogram'])
-#        print(n_audio)
         for i in range(n_audio):
             n_frames = self.data['mel_spectrogram'][i].shape[1]
-#            print(n_frames)
             if task == 'CNN':
                 for j in range(n_frames):
                     list_IDs.append((i, j))
-            elif task == 'RNN' or 'CBRNN':
-                for j in range(n_frames-sequential_frames+1):
-                    list_IDs.append((i, j))
+            elif task == 'RNN':
+                for j in range(n_frames):
+                    if fmod(j, 100) == 0:
+                        list_IDs.append((i, j))
                     
         if withBeatsAnnotations == True:
             list_IDs = [ID for ID in list_IDs if ID[0] < 27]
