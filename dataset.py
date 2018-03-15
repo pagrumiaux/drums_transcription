@@ -11,15 +11,18 @@ import numpy as np
 from math import fmod, floor
 import time
 import xml.etree.ElementTree as et
+from utilities import spreadTargetFunctions
+
 
 folder_rbma = "/users/grumiaux/Documents/stage/rbma_13/"
 folder_smt = "/users/grumiaux/Documents/stage/SMT_DRUMS/"
+folder_enst = "/users/grumiaux/Documents/stage/ENST-drums/"
 
 class Dataset:
     def __init__(self):
         self.data = {'audio_name': [], 'mel_spectrogram': [], 'BD_target': [], 'SD_target': [], 'HH_target': [], 'beats_target': [], 'downbeats_target': [], 'BD_annotations': [], 'SD_annotations': [], 'HH_annotations': [], 'beats_annotations': [], 'downbeats_annotations': []}
         
-    def loadDataset(self):
+    def loadDataset(self, spread = False, spread_length = 10):
         audio_names_rbma = self.extractAudioNamesRbma()
 #        print(len(audio_names_rbma))
         for audio in audio_names_rbma:
@@ -53,6 +56,14 @@ class Dataset:
             self.data['HH_target'].append(self.annotationsToTargetFunctions(HH_annotations, mel_spectrogram.shape[1]))
         print('Smt dataset loaded.')
         
+        if spread == True:
+            nb_target_functions = len(self.data['BD_target'])
+            for i in range(nb_target_functions):
+                self.data['BD_target'][i] = spreadTargetFunctions(self.data['BD_target'][i], spread_length)
+                self.data['SD_target'][i] = spreadTargetFunctions(self.data['SD_target'][i], spread_length)
+                self.data['HH_target'][i] = spreadTargetFunctions(self.data['HH_target'][i], spread_length)
+            print('Spreading done over all samples')
+        
         self.audio_names = audio_names_rbma + audio_names_smt
         
     def extractAudioNamesRbma(self):
@@ -66,6 +77,9 @@ class Dataset:
         audio_names_smt_other = [f[:-4] for f in os.listdir(folder_smt_audio) if f.endswith('.npy') and not f.endswith('MIX.npy')]
         audio_names_smt = audio_names_smt_mix + audio_names_smt_other
         return audio_names_smt
+    
+    def extractAudioNamesENST(self):
+        return None
         
     def extractMelSpectrogramAndAnnotationsRbma(self, audio_name, sr = 44100):
         """ Compute the mel spectrogram of ONE track and extract the annotations
@@ -163,7 +177,7 @@ class Dataset:
                     list_IDs.append((i, j))
             elif task == 'RNN':
                 for j in range(n_frames):
-                    if fmod(j, 100) == 0:
+                    if fmod(j, sequential_frames) == 0:
                         list_IDs.append((i, j))
                     
         if withBeatsAnnotations == True:

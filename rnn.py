@@ -25,8 +25,6 @@ params = {'dim_x': 100,
           'shuffle': True,
           'task': 'RNN',
           'sequential_frames': 100}
-np.random.seed(1)
-
 index_first_solo_drums = 131
 
 #%% Dataset load
@@ -34,21 +32,25 @@ dataset = Dataset()
 dataset.loadDataset()
 
 #%% three fold cross validation
-list_IDs = dataset.generate_IDs(params['task'], dataFilter='smt')
+list_IDs = dataset.generate_IDs(params['task'], sequential_frames = params['sequential_frames'], dataFilter='rbma')
 n_ID = len(list_IDs)
 
-#%%
+#%% ONLY FOR SMT
 ID_first_solo = 0 # find solo drums IDs to put it in training IDs list
 for i in range(n_ID):
     if list_IDs[i][0] == index_first_solo_drums:
         ID_first_solo = i
         break
 
-#%% distribute IDs per track block in training or testing sets
+# distribute IDs per track block in training or testing sets
 list_mix_first_IDs = [i for i in range(index_first_solo_drums)] # list of IDs[0] of MIX
 np.random.shuffle(list_mix_first_IDs) # we shuffle solo drums IDs for picking them randomly
 
-temp_IDs = list_IDs[ID_first_solo:] #temporary list of IDs (will be for training and validation). We start putting solo drums for training in this list
+#%%
+# SMT SOLO DRUMS OR NOT, COMMENT IN OR OUT
+#temp_IDs = list_IDs[ID_first_solo:] #temporary list of IDs (will be for training and validation). We start putting solo drums for training in this list
+temp_IDs = []
+
 test_IDs = [] #empty list of IDs for evaluation
 
 while len(temp_IDs) < int(2*n_ID/3): # two third of the IDs will be for training and validation
@@ -68,12 +70,12 @@ validation_IDs = temp_IDs[train_valid_split:]
 
 #%% Model initialization
 units = 50
-epochs = 15
 input_shape = (params['dim_x'], params['dim_y'])
 
 model = Sequential()
 model.add(Bidirectional(GRU(units, return_sequences=True), input_shape=input_shape))
 model.add(Bidirectional(GRU(units, return_sequences=True)))
+#model.add(Bidirectional(GRU(units, return_sequences=True)))
 model.add(Dense(3, activation='sigmoid'))
 optimizer = RMSprop(lr=0.007)
 model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['acc'])
@@ -82,9 +84,10 @@ LRPlateau = ReduceLROnPlateau(factor=0.5, verbose=1, patience=10)
 Checkpoint = ModelCheckpoint("SMT-BGRUa-2.{val_loss:.2f}.hdf5", verbose=1)
 
 #%% Model training
+epochs = 20
 for i in range(epochs):
     print("=== Epoch n°" + str(i))
-    np.random.seed(i)
+#    np.random.seed(i)
     np.random.shuffle(temp_IDs)
     training_IDs = temp_IDs[:train_valid_split]
     validation_IDs = temp_IDs[train_valid_split:]
@@ -98,9 +101,10 @@ for i in range(epochs):
 #%% Generate test prediction
 X_test = np.empty((len(test_IDs), params['dim_x'], params['dim_y']))
 for i in range(len(test_IDs)):
-    X_test[i, :, :] = DataGenerator(params['dim_x'], params['dim_y'], 'RNN').extract_feature(dataset, test_IDs[i])
+    X_test[i, :, :] = DataGenerator(**params).extract_feature(dataset, test_IDs[i])
 
 y_hat = model.predict(X_test, verbose=1)
+
 #%% F measure for BD, SD and HH on the test set
 peak_thres = 0.2
 
@@ -143,9 +147,8 @@ for i, ID in enumerate(test_track_IDs):
 #    input("pause")
     global_fmeasure.append(fmeasure)
     
-#%% Visualization
-i = 26 # n° test (see test_track_IDs)
-print(dataset.data['audio_name'][test_track_IDs[i]])
+i = 5 # n° test (see test_track_IDs)
+print(dataset.data['audio_name'][test_track_IDs[i]], global_fmeasure[i])
 # BD
 plt.figure(1)
 plt.plot(dataset.data['BD_target'][test_track_IDs[i]])

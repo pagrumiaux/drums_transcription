@@ -95,21 +95,34 @@ def f_measure(est_events, ref_events, est_pitches, ref_pitches, onset_tolerance 
 def groupePredictionSamplesByTrack(y_test, test_IDs):
     y_test_grouped = []
     test_track_IDs = []
+    n_dim = len(y_test.shape)
     
     cur_track_ID = test_IDs[0][0]
     list_to_concat = []
     for i, ID in enumerate(test_IDs):
-        if ID[0] != cur_track_ID:
-            y_test_concat = np.concatenate(list_to_concat, axis=0)
-            y_test_grouped.append(y_test_concat)
-            list_to_concat = []
-            test_track_IDs.append(cur_track_ID)
-            cur_track_ID = ID[0]
-        list_to_concat.append(y_test[i, :, :])   
-        if ID == test_IDs[-1]:
-            y_test_concat = np.concatenate(list_to_concat, axis=0)
-            y_test_grouped.append(y_test_concat)
-            test_track_IDs.append(cur_track_ID)
+        if n_dim == 3:
+            if ID[0] != cur_track_ID:
+                y_test_concat = np.concatenate(list_to_concat, axis=0)
+                y_test_grouped.append(y_test_concat)
+                list_to_concat = []
+                test_track_IDs.append(cur_track_ID)
+                cur_track_ID = ID[0]
+                
+    
+            list_to_concat.append(y_test[i, :, :])   
+            if ID == test_IDs[-1]:
+                y_test_concat = np.concatenate(list_to_concat, axis=0)
+                y_test_grouped.append(y_test_concat)
+                test_track_IDs.append(cur_track_ID)
+        
+        elif n_dim == 2:
+            if ID[0] != cur_track_ID:
+                y_test_concat = np.stack(list_to_concat)
+                y_test_grouped.append(y_test_concat)
+                list_to_concat = []
+                test_track_IDs.append(cur_track_ID)
+                cur_track_ID = ID[0]
+            list_to_concat.append(y_test[i, :])           
 
     return y_test_grouped, test_track_IDs
 
