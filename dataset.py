@@ -175,10 +175,11 @@ class Dataset:
             if task == 'CNN':
                 for j in range(n_frames):
                     list_IDs.append((i, j))
-            elif task == 'RNN':
+            elif task == 'RNN' or task == 'CBRNN':
                 for j in range(n_frames):
                     if fmod(j, sequential_frames) == 0:
                         list_IDs.append((i, j))
+                
                     
         if withBeatsAnnotations == True:
             list_IDs = [ID for ID in list_IDs if ID[0] < 27]

@@ -30,7 +30,7 @@ index_first_solo_drums = 131
 
 #%% Dataset load
 dataset = Dataset()
-dataset.loadDataset(spread=True, spread_length=10)
+dataset.loadDataset()
 
 #%% three fold cross validation
 list_IDs = dataset.generate_IDs(params['task'], dataFilter='smt')
@@ -96,15 +96,15 @@ LRPlateau = ReduceLROnPlateau(factor=0.5, verbose=1, patience=10)
 Checkpoint = ModelCheckpoint("weights.{epoch:02d}-{val_loss:.2f}.hdf5", verbose=1)
 
 #%%
-epochs = 10
+epochs = 5
 for i in range(epochs):
     print("=== Epoch n°" + str(i) + ' ===')
 #    np.random.seed(i)
     np.random.shuffle(temp_IDs)
     training_IDs = temp_IDs[:train_valid_split]
     validation_IDs = temp_IDs[train_valid_split:]
-#    training_IDs_with_duplicate = utilities.duplicateTrainingSamples(dataset, training_IDs, ratio = 15)
-    training_generator = DataGenerator(**params).generate(dataset, training_IDs)    
+    training_IDs_with_duplicate = utilities.duplicateTrainingSamples(dataset, training_IDs, ratio = 4)
+    training_generator = DataGenerator(**params).generate(dataset, training_IDs_with_duplicate)    
     validation_generator = DataGenerator(**params).generate(dataset, validation_IDs)
     
 #    print(K.get_value(optimizer.lr))
@@ -127,12 +127,13 @@ y_hat_grouped, test_track_IDs = postProcessing.groupePredictionSamplesByTrack(y_
 
 for i, ID in enumerate(test_track_IDs):
 #    print(i, ID)
+#    i = i+7
     # BD events
     BD_est_activation = y_hat_grouped[i][:, 0]
     BD_est_events = postProcessing.activationToEvents(BD_est_activation, peak_thres = peak_thres)
     BD_ref_events = dataset.data['BD_annotations'][ID]
-#    print(BD_ref_events)
-#    print(BD_est_events)
+#    print(BD_ref_events, len(BD_ref_events))
+#    print(BD_est_events, len(BD_est_events))
 #    input('pause')
     
     # SD events
@@ -142,9 +143,11 @@ for i, ID in enumerate(test_track_IDs):
 #    print(SD_ref_events)
     
     # HH events
-    HH_est_activation = y_hat_grouped[i][i:, 2]
+    HH_est_activation = y_hat_grouped[i][:, 2]
     HH_est_events = postProcessing.activationToEvents(HH_est_activation, peak_thres = peak_thres)
     HH_ref_events = dataset.data['HH_annotations'][ID]
+#    print(HH_est_activation)
+#    print(HH_est_events)
 #    print(HH_ref_events)
     
     # all events
@@ -152,32 +155,39 @@ for i, ID in enumerate(test_track_IDs):
     est_pitches = np.concatenate((np.ones(len(BD_est_events)), np.ones(len(SD_est_events))*2, np.ones(len(HH_est_events))*3))
     ref_events = np.concatenate((BD_ref_events, SD_ref_events, HH_ref_events))
     ref_pitches = np.concatenate((np.ones(len(BD_ref_events)), np.ones(len(SD_ref_events))*2, np.ones(len(HH_ref_events))*3))
-    
-    
+
+#    print(len(est_events), len(ref_events))
 #    _, _, fmeasure = postProcessing.precisionRecallFmeasure(est_events, ref_events, est_pitches, ref_pitches)
     precision, recall, fmeasure = postProcessing.f_measure(est_events, ref_events, est_pitches, ref_pitches)
+#    print(precision, recall, fmeasure)
 #    input("pause")
     global_fmeasure.append(fmeasure)
     
 #%% Visualization
-i = 5 # n° test (see test_track_IDs)
+i = 50 # n° test (see test_track_IDs)
 print(dataset.data['audio_name'][test_track_IDs[i]], global_fmeasure[i])
+
 # BD
 plt.figure(1)
 plt.title('Activation function and ground-truth activation - Kick')
+plt.ylabel('Activation')
+plt.xlabel('Frames')
 plt.plot(dataset.data['BD_target'][test_track_IDs[i]])
 plt.plot(y_hat_grouped[i][:, 0])
 print(postProcessing.activationToEvents(y_hat_grouped[i][:, 0], peak_thres = peak_thres))
 # SD
 plt.figure(2)
 plt.title('Activation function and ground-truth activation - Snare')
+plt.ylabel('Activation')
+plt.xlabel('Frames')
 plt.plot(dataset.data['SD_target'][test_track_IDs[i]])
 plt.plot(y_hat_grouped[i][:, 1])
 print(postProcessing.activationToEvents(y_hat_grouped[i][:, 1], peak_thres = peak_thres))
 # HH
 plt.figure(3)
 plt.title('Activation function and ground-truth activation - Hihat')
+plt.ylabel('Activation')
+plt.xlabel('Frames')
 plt.plot(dataset.data['HH_target'][test_track_IDs[i]])
 plt.plot(y_hat_grouped[i][:, 2])
 print(postProcessing.activationToEvents(y_hat_grouped[i][:, 2], peak_thres = peak_thres))
-

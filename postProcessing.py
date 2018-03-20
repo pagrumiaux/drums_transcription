@@ -27,7 +27,7 @@ def peakPicking(sequence, m = 2, a = 2, w = 5, thres = 0.1):
     
     return peaks
 
-def peakPickingThreshold(sequence, thres, m = 2, w = 7):
+def peakPickingThreshold(sequence, thres, m = 2, w = 10):
     peaks = []
     n_last_peak = -1-w
     length = sequence.shape[0]
@@ -69,10 +69,18 @@ def precisionRecallFmeasure(est_events, ref_events, est_pitches, ref_pitches, on
 
 def f_measure(est_events, ref_events, est_pitches, ref_pitches, onset_tolerance = 0.02):
     tp = 0
+#    print(est_events)
+#    print(ref_events)
+#    print(est_pitches)
+#    print(ref_pitches)
     for i, est in enumerate(est_events):
         for j, ref in enumerate(ref_events):
+#            print((i, j), (est_events[i], ref_events[j]))
             if abs(est-ref) < onset_tolerance and est_pitches[i] == ref_pitches[j]:
                 tp = tp + 1
+#                print('tp')
+                break
+#        input("pause")
     if est_events.shape[0] == 0 or ref_events.shape[0] == 0:
         if est_events.shape[0] == 0 and ref_events.shape[0] == 0:
             precision = 1.0
