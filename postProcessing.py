@@ -69,18 +69,11 @@ def precisionRecallFmeasure(est_events, ref_events, est_pitches, ref_pitches, on
 
 def f_measure(est_events, ref_events, est_pitches, ref_pitches, onset_tolerance = 0.02):
     tp = 0
-#    print(est_events)
-#    print(ref_events)
-#    print(est_pitches)
-#    print(ref_pitches)
     for i, est in enumerate(est_events):
         for j, ref in enumerate(ref_events):
-#            print((i, j), (est_events[i], ref_events[j]))
             if abs(est-ref) < onset_tolerance and est_pitches[i] == ref_pitches[j]:
                 tp = tp + 1
-#                print('tp')
                 break
-#        input("pause")
     if est_events.shape[0] == 0 or ref_events.shape[0] == 0:
         if est_events.shape[0] == 0 and ref_events.shape[0] == 0:
             precision = 1.0
@@ -95,7 +88,6 @@ def f_measure(est_events, ref_events, est_pitches, ref_pitches, onset_tolerance 
         fmeasure = 0.0
     else:
         fmeasure = 2*precision*recall/(precision+recall)
-#    print(tp, est_events.shape[0], ref_events.shape[0])
     
     return precision, recall, fmeasure
 

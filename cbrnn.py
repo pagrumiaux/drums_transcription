@@ -18,12 +18,12 @@ import matplotlib.pyplot as plt
 
 #%% Parameters
 params = {'dim_x': 168,
-          'dim_y': 9,
+          'dim_y': 13,
           'batch_size': 8,
           'shuffle': True,
           'task': 'CBRNN',
-          'context_frames': 9,
-          'sequential_frames': 100}
+          'context_frames': 13,
+          'sequential_frames': 400}
 
 index_first_solo_drums = 131
 
@@ -63,7 +63,8 @@ validation_IDs = temp_IDs[train_valid_split:]
 #%% Model creation
 
 cnn_input_shape = (params['dim_x'], params['dim_y'], 1)
-units = 30
+#units = 30
+units = 60
 
 ### cnn layer
 cnn_input = Input(shape=cnn_input_shape, name = 'cnn_input')
@@ -93,15 +94,16 @@ x_rnn = TimeDistributed(cnn_model)(rnn_input)
 
 x_rnn = Bidirectional(GRU(units, return_sequences=True))(x_rnn)
 x_rnn = Bidirectional(GRU(units, return_sequences=True))(x_rnn)
+x_rnn = Bidirectional(GRU(units, return_sequences=True))(x_rnn)
 rnn_output = Dense(3, activation='sigmoid')(x_rnn)
 
 cbrnn_model = Model(inputs=rnn_input, outputs=rnn_output)
 print(cbrnn_model.summary())
-optimizer = keras.optimizers.RMSprop(lr=0.001)
+optimizer = keras.optimizers.RMSprop(lr=0.0005)
 cbrnn_model.compile(loss=keras.losses.binary_crossentropy, optimizer=optimizer, metrics=['accuracy'])
 
 #%% Model training
-epochs = 5
+epochs = 10
 for i in range(epochs):
     print("=== Epoch n°" + str(i) + ' ===')
 #    np.random.seed(i)
@@ -120,10 +122,12 @@ X_test = np.empty((len(test_IDs), params['sequential_frames'], params['dim_x'], 
 for i in range(len(test_IDs)):
     X_test[i, :, :, :, 0] = DataGenerator(**params).extract_feature(dataset, test_IDs[i])
 
+y_hat = cbrnn_model.predict(X_test, verbose=1)
 #%%
 y_hat = np.empty((len(test_IDs), params['sequential_frames'], 3))
 for i in range(len(test_IDs)):
-    y_hat[i, :, :] = cbrnn_model.predict(X_test[i, :, :, :, :], verbose=1)
+    print(str(i) + "/" + str(len(test_IDs)))
+    y_hat[i, :, :] = cbrnn_model.predict(X_test[i, :, :, :, :])
 
 #%% F measure for BD, SD and HH on the test set
 peak_thres = 0.2
@@ -173,7 +177,7 @@ for i, ID in enumerate(test_track_IDs):
     global_fmeasure.append(fmeasure)
     
 #%% Visualization
-i = 6 # n° test (see test_track_IDs)
+i = 40 # n° test (see test_track_IDs)
 print(dataset.data['audio_name'][test_track_IDs[i]], global_fmeasure[i])
 
 # BD

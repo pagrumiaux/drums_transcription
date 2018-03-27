@@ -9,6 +9,7 @@ import keras
 from keras import backend as K
 import numpy as np
 from imageio import imwrite
+import matplotlib.pyplot as plt
 #%% images dimensions
 img_width = 25
 img_height = 168
@@ -31,18 +32,20 @@ def deprocess_image(x):
     return x
 
 #%% model load
-model = keras.models.load_model('test_CNN.hdf5')
+model = keras.models.load_model('models/SMT-CNNb-duplicate10-10epochs.hdf5')
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
 input_img = model.input
 
 def normalize(x):
     return x / (K.sqrt(K.mean(K.square(x))) + K.epsilon())
 
+print(model.summary())
+
 #%%
-layer_name = 'dense_3'
+layer_name = 'conv2d_20'
 
 filters = []
-for filter_index in range(1):
+for filter_index in range(32):
     print('Processing filter %d' % filter_index)
 
     # loss function to maximize the activation
@@ -51,15 +54,15 @@ for filter_index in range(1):
 #        loss = K.mean(layer_output[:, filter_index, :, :])
 #    else:
 #        loss = K.mean(layer_output[:, :, :, filter_index])
-        
-    loss = K.mean(layer_output[:, 3])
+    
+    loss = K.mean(layer_output[:, :, :, filter_index])
+#    loss = K.mean(layer_output[:, 0])
         
     # compute the gradient
     grads = K.gradients(loss, input_img)[0]
     
     # normalize the gradient
     grads = normalize(grads)
-    print(grads.shape)
     
     # returns the loss and grads
     iterate = K.function([input_img], [loss, grads])
@@ -75,22 +78,40 @@ for filter_index in range(1):
     input_img_data = (input_img_data - 0.5) * 20 + 128
     
     # gradient ascent
-    for i in range(200):
+    for i in range(1000):
         loss_value, grads_value = iterate([input_img_data])
-        print(loss_value)
+#        print(loss_value, grads_value)
         input_img_data += grads_value * step
+#        input("pause")
         
-        print('Current loss value:', loss_value)
         if loss_value < 0.:
             img = deprocess_image(input_img_data[0])
             filters.append((img, loss_value))
             break
         
-        if loss_value >= 0:
-            img = deprocess_image(input_img_data[0])
-            filters.append((img, loss_value))
-    print('Ok')
-        
+    if loss_value >= 0:
+        img = deprocess_image(input_img_data[0])
+        filters.append((img, loss_value))
+
+#%%
+n_row, n_col = (2, 16)
+
+f, axes = plt.subplots(n_row, n_col, sharey=True, sharex=True)
+
+for i in range(n_row):
+    for j in range(n_col):
+        if n_row > 1:
+            axes[i, j].imshow(filters[i*n_col+j][0][:, :, 0])
+            axes[i, j].set_title(str(i*n_col+j))
+        else:
+            axes[j].imshow(filters[i*n_col+j][0][:, :, 0])
+
+#axes[0].set_ylim(0, 200)
+
+ax = plt.gca()
+ax.invert_yaxis()
+#ax.set_xlim([0, 10])
+
 #%%
 n = 1
 

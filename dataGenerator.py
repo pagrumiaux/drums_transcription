@@ -11,7 +11,7 @@ import keras.backend as K
 
 class DataGenerator(object):
     'Generates data for Keras'
-    def __init__(self, dim_x, dim_y, task, batch_size = 8, shuffle = True, context_frames = 25, sequential_frames = 100, difference_spectrogram = True):
+    def __init__(self, dim_x, dim_y, task, batch_size = 8, shuffle = True, context_frames = 25, sequential_frames = 100, difference_spectrogram = True, beatsAndDownbeats = False):
         'Initialization'
         self.dim_x = dim_x
         self.dim_y = dim_y
@@ -21,6 +21,7 @@ class DataGenerator(object):
         self.context_frames = context_frames
         self.sequential_frames = sequential_frames
         self.diff = difference_spectrogram
+        self.beatsAndDownbeats = beatsAndDownbeats
     
     def generate(self, dataset, list_IDs):
         'Generates batches of samples'
@@ -64,10 +65,23 @@ class DataGenerator(object):
                 feature = np.concatenate((spectro[:, ID[1]:], np.zeros((spectro.shape[0], self.sequential_frames-(audio_spectro_length-ID[1])))), axis=1)
             else:
                 feature = spectro[:, ID[1]:ID[1]+self.sequential_frames]
+
             if self.diff == True:
                 feature_diff = np.concatenate((np.zeros((feature.shape[0], 1)), np.diff(feature)), axis=1)
                 feature_diff = np.clip(feature_diff, a_min=0, a_max=None)
                 feature = np.concatenate((feature, feature_diff), axis=0)
+            
+            if self.beatsAndDownbeats:
+                beats_target = dataset.data['beats_target'][audio_ID]
+                downbeats_target = dataset.data['downbeats_target'][audio_ID]
+                if ID[1] >= audio_spectro_length - self.sequential_frames:
+                    beats = np.concatenate((beats_target[ID[1]:], np.zeros((self.sequential_frames-(audio_spectro_length-ID[1])))))
+                    downbeats = np.concatenate((downbeats_target[ID[1]:], np.zeros((self.sequential_frames-(audio_spectro_length-ID[1])))))
+                else:
+                    beats = dataset.data['beats_target'][audio_ID][ID[1]:ID[1]+self.sequential_frames]
+                    downbeats = dataset.data['downbeats_target'][audio_ID][ID[1]:ID[1]+self.sequential_frames]
+                
+                feature = np.concatenate((feature, np.tile(beats.reshape((1, self.sequential_frames)), (84, 1)), np.tile(downbeats.reshape((1, self.sequential_frames)), (84, 1))), axis=0)
             feature = feature.T
 #            print(feature.min(), feature.max()) 
             
