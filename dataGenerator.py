@@ -11,7 +11,7 @@ import keras.backend as K
 
 class DataGenerator(object):
     'Generates data for Keras'
-    def __init__(self, dim_x, dim_y, task, batch_size = 8, shuffle = True, context_frames = 25, sequential_frames = 100, difference_spectrogram = True, beatsAndDownbeats = False):
+    def __init__(self, dim_x, dim_y, task, batch_size = 8, shuffle = True, context_frames = 25, sequential_frames = 100, difference_spectrogram = True, beatsAndDownbeats = False, multiTask = False):
         'Initialization'
         self.dim_x = dim_x
         self.dim_y = dim_y
@@ -22,6 +22,7 @@ class DataGenerator(object):
         self.sequential_frames = sequential_frames
         self.diff = difference_spectrogram
         self.beatsAndDownbeats = beatsAndDownbeats
+        self.multiTask = multiTask
     
     def generate(self, dataset, list_IDs):
         'Generates batches of samples'
@@ -40,14 +41,23 @@ class DataGenerator(object):
         return X, y
                
     def extract_feature(self, dataset, ID):
-#        print(ID)
         audio_ID = ID[0]
         spectro = dataset.data['mel_spectrogram'][audio_ID]
         audio_spectro_length = spectro.shape[1]
         
+        # we standardize the spectrogram
+        if dataset.data['origin'][audio_ID] == 'rbma':
+            mean = np.array(dataset.standardization['rbma_mel_mean'])
+            var = np.array(dataset.standardization['rbma_mel_var'])
+        elif dataset.data['origin'][audio_ID] == 'smt':
+            mean = dataset.standardization['smt_mel_mean']
+            var = dataset.standardization['smt_mel_var']
+        mean = mean.reshape((mean.shape[0], 1))
+        var = var.reshape((mean.shape[0], 1))
+        
+        # if the network is a CNN
         if self.task == 'CNN':
             padding = int((self.context_frames-1)/2)
-            #print(self.context_frames, padding)
             if ID[1] < padding:
                 feature = np.concatenate((np.zeros((spectro.shape[0], (padding-ID[1]))), spectro[:, :ID[1]+padding+1]), axis=1)
             elif ID[1] >= audio_spectro_length - padding:
@@ -60,6 +70,7 @@ class DataGenerator(object):
                 feature_diff = np.clip(feature_diff, a_min=0, a_max=None)
                 feature = np.concatenate((feature, feature_diff), axis=0)
                 
+        # if the network is a RNN
         elif self.task == 'RNN':
             if ID[1] >= audio_spectro_length - self.sequential_frames:
                 feature = np.concatenate((spectro[:, ID[1]:], np.zeros((spectro.shape[0], self.sequential_frames-(audio_spectro_length-ID[1])))), axis=1)
@@ -82,9 +93,9 @@ class DataGenerator(object):
                     downbeats = dataset.data['downbeats_target'][audio_ID][ID[1]:ID[1]+self.sequential_frames]
                 
                 feature = np.concatenate((feature, np.tile(beats.reshape((1, self.sequential_frames)), (84, 1)), np.tile(downbeats.reshape((1, self.sequential_frames)), (84, 1))), axis=0)
-            feature = feature.T
-#            print(feature.min(), feature.max()) 
+#            feature = feature.T
             
+        # if the network is a CBRNN
         elif self.task == 'CBRNN':
             padding = int((self.context_frames-1)/2)
             if not self.diff:
@@ -112,46 +123,70 @@ class DataGenerator(object):
                 else:
                     feature[i, :, :] = temp_feature
                     
+        # finish standardization
+        if self.diff:
+            mean = np.concatenate((mean, mean), axis=0)
+            var = np.concatenate((var, var), axis=0)
+        feature = (feature-mean)/np.sqrt(var)
+        
+        # transpose if RNN
+        if self.task == 'RNN':
+            feature = feature.T
+        
         return feature            
                 
     def __get_exploration_order(self, list_IDs):
         'Generates order of exploration'
         indexes = np.arange(len(list_IDs))
         if self.shuffle == True:
-            np.random.shuffle(indexes)
-            
+            np.random.shuffle(indexes)            
         return indexes
     
     def __data_generation(self, dataset, list_IDs_temp):
         'Generates data of batch_size samples'
+        
         if self.task == 'CNN':
+            if not self.multiTask:
+                y_dim = 3
+            else:
+                y_dim = 5
+                
             X = np.empty((self.batch_size, self.dim_x, self.dim_y, 1))
-            y = np.empty((self.batch_size, 3), dtype=int)
+            y = np.empty((self.batch_size, y_dim), dtype=int)
             for i, ID in enumerate(list_IDs_temp):
                 X[i, :, :, 0] = self.extract_feature(dataset, ID)
                 y[i, 0] = dataset.data['BD_target'][ID[0]][ID[1]]
                 y[i, 1] = dataset.data['SD_target'][ID[0]][ID[1]]
                 y[i, 2] = dataset.data['HH_target'][ID[0]][ID[1]]
-#                print(y[i, 0], y[i, 1], y[i, 2])
-#            input("pause")
+                if self.multiTask:
+                    y[i, 3] = dataset.data['beats_target'][ID[0]][ID[1]]
+                    y[i, 4] = dataset.data['downbeats_target'][ID[0]][ID[1]]
 
         elif self.task == 'RNN':
+            if not self.multiTask:
+                y_dim = 3
+            else:
+                y_dim = 5
+            
             X = np.empty((self.batch_size, self.dim_x, self.dim_y))
-            y = np.empty((self.batch_size, self.dim_x, 3), dtype=int)
+            y = np.empty((self.batch_size, self.dim_x, y_dim), dtype=int)
             for i, ID in enumerate(list_IDs_temp):
-#                print(ID)
                 audio_spectro_length = dataset.data['mel_spectrogram'][ID[0]].shape[1]
                 X[i, :, :] = self.extract_feature(dataset, ID)
                 if ID[1] >= audio_spectro_length - self.sequential_frames:
                     y[i, :, 0] = np.concatenate((dataset.data['BD_target'][ID[0]][ID[1]:], np.zeros((self.dim_x-(audio_spectro_length-ID[1])))))
                     y[i, :, 1] = np.concatenate((dataset.data['SD_target'][ID[0]][ID[1]:], np.zeros((self.dim_x-(audio_spectro_length-ID[1])))))
                     y[i, :, 2] = np.concatenate((dataset.data['HH_target'][ID[0]][ID[1]:], np.zeros((self.dim_x-(audio_spectro_length-ID[1])))))
+                    if self.multiTask:
+                        y[i, :, 3] = np.concatenate((dataset.data['beats_target'][ID[0]][ID[1]:], np.zeros((self.dim_x-(audio_spectro_length-ID[1])))))
+                        y[i, :, 4] = np.concatenate((dataset.data['downbeats_target'][ID[0]][ID[1]:], np.zeros((self.dim_x-(audio_spectro_length-ID[1])))))
                 else:
                     y[i, :, 0] = dataset.data['BD_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
                     y[i, :, 1] = dataset.data['SD_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
                     y[i, :, 2] = dataset.data['HH_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
-#                y[i, :, 0] = dataset.data['beats_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
-#                y[i, :, 1] = dataset.data['downbeats_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
+                    if self.multiTask:
+                        y[i, :, 3] = dataset.data['beats_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
+                        y[i, :, 4] = dataset.data['downbeats_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
                 
         elif self.task == 'CBRNN':
             X = np.empty((self.batch_size, self.sequential_frames, self.dim_x, self.dim_y, 1))
@@ -172,7 +207,7 @@ class DataGenerator(object):
 #        print(y)
 #        input('pause')
                 
-        return X, y
+        return X, np.clip(y, 0+np.finfo(float).eps, None)
     
 
     
