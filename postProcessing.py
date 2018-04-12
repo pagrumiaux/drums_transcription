@@ -126,3 +126,90 @@ def groupePredictionSamplesByTrack(y_test, test_IDs):
 
     return y_test_grouped, test_track_IDs
 
+def computeResults(dataset, y_hat_grouped, test_track_IDs, peak_thres):
+    # results dict initialization
+    BD_results = {'precision': [], 'recall': [], 'fmeasure': []}
+    SD_results = {'precision': [], 'recall': [], 'fmeasure': []}
+    HH_results = {'precision': [], 'recall': [], 'fmeasure': []}
+    global_results = {'precision': [], 'recall': [], 'fmeasure': []}
+    
+#    y_hat_grouped, test_track_IDs = groupePredictionSamplesByTrack(y_hat, test_IDs)
+    
+    for i, ID in enumerate(test_track_IDs):
+        print(i)
+        # BD events
+        BD_est_activation = y_hat_grouped[i][:, 0]
+        BD_est_events = activationToEvents(BD_est_activation, peak_thres = peak_thres)
+        BD_ref_events = np.array(dataset.data['BD_annotations'][ID])
+        BD_est_pitches = np.ones(len(BD_est_events))
+        BD_ref_pitches = np.ones(len(BD_ref_events))
+        BD_precision, BD_recall, BD_fmeasure = f_measure(BD_est_events, BD_ref_events, BD_est_pitches, BD_ref_pitches)
+        BD_results['precision'].append(BD_precision)
+        BD_results['recall'].append(BD_recall)
+        BD_results['fmeasure'].append(BD_fmeasure)
+      
+        # SD events
+        SD_est_activation = y_hat_grouped[i][:, 1]
+        SD_est_events = activationToEvents(SD_est_activation, peak_thres = peak_thres)
+        SD_ref_events = np.array(dataset.data['SD_annotations'][ID])
+        SD_est_pitches = np.ones(len(SD_est_events))
+        SD_ref_pitches = np.ones(len(SD_ref_events))
+        SD_precision, SD_recall, SD_fmeasure = f_measure(SD_est_events, SD_ref_events, SD_est_pitches, SD_ref_pitches)
+        SD_results['precision'].append(SD_precision)
+        SD_results['recall'].append(SD_recall)
+        SD_results['fmeasure'].append(SD_fmeasure)
+    
+        # HH events
+        HH_est_activation = y_hat_grouped[i][:, 2]
+        HH_est_events = activationToEvents(HH_est_activation, peak_thres = peak_thres)
+        HH_ref_events = np.array(dataset.data['HH_annotations'][ID])
+        HH_est_pitches = np.ones(len(HH_est_events))
+        HH_ref_pitches = np.ones(len(HH_ref_events))
+        HH_precision, HH_recall, HH_fmeasure = f_measure(HH_est_events, HH_ref_events, HH_est_pitches, HH_ref_pitches)
+        HH_results['precision'].append(HH_precision)
+        HH_results['recall'].append(HH_recall)
+        HH_results['fmeasure'].append(HH_fmeasure)
+    
+        # all events
+        all_est_events = np.concatenate((BD_est_events, SD_est_events, HH_est_events))
+        all_est_pitches = np.concatenate((np.ones(len(BD_est_events)), np.ones(len(SD_est_events))*2, np.ones(len(HH_est_events))*3))
+        all_ref_events = np.concatenate((BD_ref_events, SD_ref_events, HH_ref_events))
+        all_ref_pitches = np.concatenate((np.ones(len(BD_ref_events)), np.ones(len(SD_ref_events))*2, np.ones(len(HH_ref_events))*3))
+    
+        all_precision, all_recall, all_fmeasure = f_measure(all_est_events, all_ref_events, all_est_pitches, all_ref_pitches)
+        global_results['precision'].append(all_precision)
+        global_results['recall'].append(all_recall)
+        global_results['fmeasure'].append(all_fmeasure)
+        
+    return BD_results, SD_results, HH_results, global_results
+    
+
+def visualizeModelPredictionPerTrack(test_track_ID, dataset, y_hat_grouped, test_track_IDs, BD_results, SD_results, HH_results, global_results):
+    print(dataset.data['audio_name'][test_track_IDs[test_track_ID]])
+    print("Bass drum: precision = {0:.3f} ; recall = {1:.3f} ; fmeasure = {2:.3f}".format(BD_results['precision'][test_track_ID], BD_results['recall'][test_track_ID], BD_results['fmeasure'][test_track_ID]))
+    print("Snare drum: precision = {0:.3f} ; recall = {1:.3f} ; fmeasure = {2:.3f}".format(SD_results['precision'][test_track_ID], SD_results['recall'][test_track_ID], SD_results['fmeasure'][test_track_ID]))
+    print("Hihat: precision = {0:.3f} ; recall = {1:.3f} ; fmeasure = {2:.3f}".format(HH_results['precision'][test_track_ID], HH_results['recall'][test_track_ID], HH_results['fmeasure'][test_track_ID]))
+    print("Global: precision = {0:.3f} ; recall = {1:.3f} ; fmeasure = {2:.3f}".format(global_results['precision'][test_track_ID], global_results['recall'][test_track_ID], global_results['fmeasure'][test_track_ID]))
+
+    f, axes = plt.subplots(3, 1, sharex=True, sharey=True)
+
+    # BD
+    axes[0].plot(dataset.data['BD_target'][test_track_IDs[test_track_ID]])
+    axes[0].plot(y_hat_grouped[test_track_ID][:, 0])
+    axes[0].set_title('Activation function and ground-truth activation - Kick')
+    
+    # SD
+    axes[1].plot(dataset.data['SD_target'][test_track_IDs[test_track_ID]])
+    axes[1].plot(y_hat_grouped[test_track_ID][:, 1])
+    axes[1].set_title('Activation function and ground-truth activation - Snare')
+    
+    # HH
+    axes[2].plot(dataset.data['HH_target'][test_track_IDs[test_track_ID]])
+    axes[2].plot(y_hat_grouped[test_track_ID][:, 2])
+    axes[2].set_title('Activation function and ground-truth activation - Hihat')
+
+    
+    
+    
+    
+    
