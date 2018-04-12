@@ -14,8 +14,7 @@ def duplicateTrainingSamples(dataset, training_IDs, ratio = 10):
         sd = dataset.data['SD_target'][ID[0]][ID[1]]
         hh = dataset.data['HH_target'][ID[0]][ID[1]]
         if bd or sd or hh:
-    #        print(ID)
-    #        input("pause")
+
             for i in range(ratio-1):
                 training_IDs_with_duplicate.append(ID)
     return training_IDs_with_duplicate
@@ -28,7 +27,9 @@ def spreadTargetFunctions(target_function, spread_length):
     for i in range(target_length):
         if new_target_function[i] == 1.0:
             countdown = min(spread_length, target_length-i)
-        elif countdown > 0:  
+            for j in range(min(spread_length, i)):
+                new_target_function[i-(j+1)] = 1.0
+        elif countdown >= 0:  
             new_target_function[i] = 1.0
             countdown = countdown - 1
     
