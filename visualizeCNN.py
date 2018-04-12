@@ -32,7 +32,9 @@ def deprocess_image(x):
     return x
 
 #%% model load
-model = keras.models.load_model('models/SMT-CNNb-duplicate10-10epochs.hdf5')
+#model = keras.models.load_model('models/SMT-CNNb-duplicate10-10epochs.hdf5')
+
+#%%
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
 input_img = model.input
 
@@ -42,7 +44,7 @@ def normalize(x):
 print(model.summary())
 
 #%%
-layer_name = 'conv2d_20'
+layer_name = 'conv2d_6'
 
 filters = []
 for filter_index in range(32):
@@ -96,6 +98,7 @@ for filter_index in range(32):
 #%%
 n_row, n_col = (2, 16)
 
+plt.figure(3)
 f, axes = plt.subplots(n_row, n_col, sharey=True, sharex=True)
 
 for i in range(n_row):
