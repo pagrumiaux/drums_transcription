@@ -24,7 +24,7 @@ class DataGenerator(object):
         self.beatsAndDownbeats = beatsAndDownbeats
         self.multiTask = multiTask
     
-    def generate(self, dataset, list_IDs):
+    def generate(self, dataset, list_IDs, soloDrum = None):
         'Generates batches of samples'
         while 1:
             indexes = self.__get_exploration_order(list_IDs)
@@ -32,12 +32,12 @@ class DataGenerator(object):
             imax = int(len(indexes)/self.batch_size)
             for i in range(imax):
                 list_IDs_temp = [list_IDs[k] for k in indexes[i*self.batch_size:(i+1)*self.batch_size]]
-                X, y = self.__data_generation(dataset, list_IDs_temp)
+                X, y = self.__data_generation(dataset, list_IDs_temp, soloDrum = soloDrum)
                 
                 yield X, y
         
-    def generateForTest(self, dataset, list_IDs):
-        X, y = self.__data_generation(dataset, list_IDs)
+    def generateForTest(self, dataset, list_IDs, soloDrum = None):
+        X, y = self.__data_generation(dataset, list_IDs, soloDrum = soloDrum)
         return X, y
                
     def extract_feature(self, dataset, ID):
@@ -142,7 +142,7 @@ class DataGenerator(object):
             np.random.shuffle(indexes)            
         return indexes
     
-    def __data_generation(self, dataset, list_IDs_temp):
+    def __data_generation(self, dataset, list_IDs_temp, soloDrum = None):
         'Generates data of batch_size samples'
         
         if self.task == 'CNN':
@@ -189,8 +189,13 @@ class DataGenerator(object):
                         y[i, :, 4] = dataset.data['downbeats_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
                 
         elif self.task == 'CBRNN':
+            if not self.multiTask:
+                y_dim = 3
+            else:
+                y_dim = 5
+                
             X = np.empty((self.batch_size, self.sequential_frames, self.dim_x, self.dim_y, 1))
-            y = np.empty((self.batch_size, self.sequential_frames, 3), dtype=int)
+            y = np.empty((self.batch_size, self.sequential_frames, y_dim), dtype=int)
             for i, ID in enumerate(list_IDs_temp):
                 audio_spectro_length = dataset.data['mel_spectrogram'][ID[0]].shape[1]
                 X[i, :, :, :, 0] = self.extract_feature(dataset, ID)
@@ -198,14 +203,28 @@ class DataGenerator(object):
                     y[i, :, 0] = np.concatenate((dataset.data['BD_target'][ID[0]][ID[1]:], np.zeros((self.sequential_frames-(audio_spectro_length-ID[1])))))
                     y[i, :, 1] = np.concatenate((dataset.data['SD_target'][ID[0]][ID[1]:], np.zeros((self.sequential_frames-(audio_spectro_length-ID[1])))))
                     y[i, :, 2] = np.concatenate((dataset.data['HH_target'][ID[0]][ID[1]:], np.zeros((self.sequential_frames-(audio_spectro_length-ID[1])))))
-                    
+                    if self.multiTask:
+                        y[i, :, 3] = np.concatenate((dataset.data['beats_target'][ID[0]][ID[1]:], np.zeros((self.sequential_frames-(audio_spectro_length-ID[1])))))
+                        y[i, :, 4] = np.concatenate((dataset.data['downbeats_target'][ID[0]][ID[1]:], np.zeros((self.sequential_frames-(audio_spectro_length-ID[1])))))
+
                 else:
                     y[i, :, 0] = dataset.data['BD_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
                     y[i, :, 1] = dataset.data['SD_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
                     y[i, :, 2] = dataset.data['HH_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
-        
-#        print(y)
-#        input('pause')
+                    if self.multiTask:
+                        y[i, :, 3] = dataset.data['beats_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
+                        y[i, :, 4] = dataset.data['downbeats_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
+
+
+        if soloDrum is not None:
+            if soloDrum == "BD":
+                y = y[:, 0:1]
+                
+            elif soloDrum == "SD":
+                y = y[:, 1:2]
+                
+            elif soloDrum == "HH":
+                y = y[:, 2:3]
                 
         return X, np.clip(y, 0+np.finfo(float).eps, None)
     

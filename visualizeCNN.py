@@ -44,7 +44,7 @@ def normalize(x):
 print(model.summary())
 
 #%%
-layer_name = 'conv2d_6'
+layer_name = 'conv2d_1'
 
 filters = []
 for filter_index in range(32):
@@ -98,7 +98,6 @@ for filter_index in range(32):
 #%%
 n_row, n_col = (2, 16)
 
-plt.figure(3)
 f, axes = plt.subplots(n_row, n_col, sharey=True, sharex=True)
 
 for i in range(n_row):

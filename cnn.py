@@ -20,27 +20,28 @@ import utilities
 
 #%%
 params = {'dim_x': 168,
-          'dim_y': 25,
+          'dim_y': 9,
           'batch_size': 8,
           'shuffle': True,
           'task': 'CNN',
-          'context_frames': 25,
+          'context_frames': 9,
           'beatsAndDownbeats': False, 
           'multiTask': False,
           'difference_spectrogram': True}
 
 index_first_solo_drums = 131
+dataFilter = 'rbma'
 
 #%% Dataset load
 dataset = Dataset()
-dataset.loadDataset(spread_length = 5)
+dataset.loadDataset(spread_length = 2)
 
 #%% all IDs
-list_IDs = dataset.generate_IDs(params['task'], context_frames = params['context_frames'], dataFilter='rbma')
+list_IDs = dataset.generate_IDs(params['task'], stride = 0, context_frames = params['context_frames'], dataFilter=dataFilter)
 
 # IDs three-fold repartition
-train_IDs = [ID for ID in list_IDs if ID[0] in dataset.split['rbma_train_IDs']]
-test_IDs = [ID for ID in list_IDs if ID[0] in dataset.split['rbma_test_IDs']]
+train_IDs = [ID for ID in list_IDs if ID[0] in dataset.split[dataFilter + '_train_IDs']]
+test_IDs = [ID for ID in list_IDs if ID[0] in dataset.split[dataFilter + '_test_IDs']]
 
 n_train_IDs = int(0.85*len(train_IDs))
 
@@ -69,7 +70,7 @@ model.add(Dropout(1.0))
 model.add(Flatten())
 model.add(Dense(256, activation='relu', kernel_initializer='he_uniform'))
 model.add(Dense(256, activation='relu', kernel_initializer='he_uniform'))
-model.add(Dense(3, activation='sigmoid', kernel_initializer='he_uniform'))
+model.add(Dense(1, activation='sigmoid', kernel_initializer='he_uniform'))
 
 optimizer = keras.optimizers.RMSprop(lr=0.001)
 model.compile(loss=keras.losses.binary_crossentropy, optimizer=optimizer, metrics=['accuracy'])
@@ -96,8 +97,8 @@ for i in range(epochs):
     np.random.shuffle(training_IDs)
     
 #    training_IDs_with_duplicate = utilities.duplicateTrainingSamples(dataset, training_IDs, ratio = 12)
-    training_generator = DataGenerator(**params).generate(dataset, training_IDs)    
-    validation_generator = DataGenerator(**params).generate(dataset, validation_IDs)
+    training_generator = DataGenerator(**params).generate(dataset, training_IDs, soloDrum='BD')    
+    validation_generator = DataGenerator(**params).generate(dataset, validation_IDs, soloDrum='BD')
     
     model.fit_generator(generator = training_generator, steps_per_epoch = len(training_IDs)//params['batch_size'], validation_data = validation_generator, validation_steps = len(validation_IDs)//params['batch_size'], epochs=1)
 
@@ -127,11 +128,12 @@ y_hat = model.predict(X_test, verbose=1)
 
 #%% F measure for BD, SD and HH on the test set
 peak_thres = 0.2
-y_hat_grouped, test_track_IDs = postProcessing.groupePredictionSamplesByTrack(y_hat, test_IDs)
-BD_results, SD_results, HH_results, global_results = postProcessing.computeResults(dataset, y_hat_grouped, test_track_IDs, peak_thres)
-    
-#%% Visualization
-test_track_ID = 2 # n° test (see test_track_IDs)
-postProcessing.visualizeModelPredictionPerTrack(test_track_ID, dataset, y_hat_grouped, test_track_IDs, BD_results, SD_results, HH_results, global_results)
+rec_half_length = 2
 
+y_hat_grouped, test_track_IDs = postProcessing.groupePredictionSamplesByTrack(y_hat, test_IDs)
+BD_results, SD_results, HH_results, beats_results, downbeats_results, global_results = postProcessing.computeResults(dataset, y_hat_grouped, test_track_IDs, peak_thres, rec_half_length)
+print(np.mean(global_results['fmeasure']))
+#%% Visualization
+test_track_ID = 0 # n° test (see test_track_IDs)
+postProcessing.visualizeModelPredictionPerTrack(test_track_ID, dataset, y_hat_grouped, test_track_IDs, BD_results, SD_results, HH_results, global_results, beats_results, downbeats_results)
 
