@@ -9,7 +9,6 @@ Created on Wed Feb 21 15:51:03 2018
 import os
 import numpy as np
 from math import fmod, floor
-import time
 import xml.etree.ElementTree as et
 from utilities import spreadTargetFunctions
 import pickle
@@ -270,8 +269,10 @@ class Dataset:
             
         if dataFilter != None:
             if dataFilter == 'rbma':
-                list_IDs = [ID for ID in list_IDs if ID[0] < 27]
+                list_IDs = [ID for ID in list_IDs if ID[0] <= 26]
             elif dataFilter == 'smt':
-                list_IDs = [ID for ID in list_IDs if ID[0] >= 27]
+                list_IDs = [ID for ID in list_IDs if ID[0] >= 27 and ID[0] <= 310]
+            elif dataFilter == 'enst':
+                list_IDs = [ID for ID in list_IDs if ID[0] >= 311]
         return list_IDs
 
