@@ -14,9 +14,7 @@ from dataGenerator import DataGenerator
 from keras.callbacks import ReduceLROnPlateau, ModelCheckpoint
 import numpy as np
 import keras.backend as K
-import matplotlib.pyplot as plt
 import postProcessing
-import utilities
 
 #%%
 params = {'dim_x': 168,
@@ -25,16 +23,15 @@ params = {'dim_x': 168,
           'shuffle': True,
           'task': 'CNN',
           'context_frames': 9,
-          'beatsAndDownbeats': False, 
+          'beatsAndDownbeats': False,
           'multiTask': False,
           'difference_spectrogram': True}
 
-index_first_solo_drums = 131
-dataFilter = 'rbma'
+dataFilter = 'enst'
 
 #%% Dataset load
 dataset = Dataset()
-dataset.loadDataset(spread_length = 2)
+dataset.loadDataset(enst_solo = True)
 
 #%% all IDs
 list_IDs = dataset.generate_IDs(params['task'], stride = 0, context_frames = params['context_frames'], dataFilter=dataFilter)
@@ -69,6 +66,7 @@ model.add(Dropout(1.0))
 # fully connected
 model.add(Flatten())
 model.add(Dense(256, activation='relu', kernel_initializer='he_uniform'))
+
 model.add(Dense(256, activation='relu', kernel_initializer='he_uniform'))
 model.add(Dense(1, activation='sigmoid', kernel_initializer='he_uniform'))
 
@@ -135,5 +133,5 @@ BD_results, SD_results, HH_results, beats_results, downbeats_results, global_res
 print(np.mean(global_results['fmeasure']))
 #%% Visualization
 test_track_ID = 0 # n° test (see test_track_IDs)
-postProcessing.visualizeModelPredictionPerTrack(test_track_ID, dataset, y_hat_grouped, test_track_IDs, BD_results, SD_results, HH_results, global_results, beats_results, downbeats_results)
+postProcessing.visualizeModelPredictionPerTrack(test_track_ID, dataset, y_hat_grouped, test_track_IDs, BD_results, SD_results, HH_results, global_results)
 

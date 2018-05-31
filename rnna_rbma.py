@@ -14,8 +14,6 @@ from dataGenerator import DataGenerator
 from keras.callbacks import ReduceLROnPlateau, ModelCheckpoint
 import numpy as np
 import keras.backend as K
-import matplotlib.pyplot as plt
-import utilities
 import manage_gpus as gpl
 import time
 import tensorflow as tf
@@ -61,15 +59,14 @@ with tf.device(comp_device):
               'task': 'RNN',
               'sequential_frames': 100,
               'beatsAndDownbeats': False, 
-              'multiTask': True,
+              'multiTask': False,
               'difference_spectrogram': True}
     
-    index_first_solo_drums = 131
     dataFilter = 'rbma'
     
     # Dataset load
     dataset = Dataset()
-    dataset.loadDataset()
+    dataset.loadDataset(enst_solo = False)
     
     # all IDs
     list_IDs = dataset.generate_IDs(params['task'], stride = 0, sequential_frames = params['sequential_frames'], dataFilter=dataFilter)
@@ -142,7 +139,7 @@ with tf.device(comp_device):
                 no_improv_count = 0
         
         print("---> val loss: " + str(cur_val_loss) + " ; val acc: " + str(cur_val_acc))
-    model.save('RBMA-RNNa-MT-epochs{}-vacc{}.hdf5'.format(i, cur_val_acc))
+    model.save('RBMA-RNNa-epochs{}-vacc{}.hdf5'.format(i, cur_val_acc))
 
 
 if gpu_id_locked >= 0:

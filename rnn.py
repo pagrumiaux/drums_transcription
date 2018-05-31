@@ -20,22 +20,21 @@ import matplotlib.pyplot as plt
 from math import fmod
 
 #%%
-params = {'dim_x': 100,
+params = {'dim_x': 400,
           'dim_y': 168,
           'batch_size': 8,
           'shuffle': True,
           'task': 'RNN',
-          'sequential_frames': 100,
+          'sequential_frames': 400,
           'beatsAndDownbeats': False, 
           'multiTask': False,
           'difference_spectrogram': True}
 
-index_first_solo_drums = 131
-dataFilter = 'rbma'
+dataFilter = 'enst'
 
 #%% Dataset load
 dataset = Dataset()
-dataset.loadDataset()
+dataset.loadDataset(enst_solo = True)
 
 #%% all IDs
 list_IDs = dataset.generate_IDs(params['task'], sequential_frames = params['sequential_frames'], dataFilter=dataFilter)
@@ -123,9 +122,9 @@ peak_thres = 0.2
 rec_half_length = 0
 
 y_hat_grouped, test_track_IDs = postProcessing.groupePredictionSamplesByTrack(y_hat, test_IDs)
-BD_results, SD_results, HH_results, beats_results, downbeats_results, global_results = postProcessing.computeResults(dataset, y_hat_grouped, test_track_IDs, peak_thres, rec_half_length, FmWithBeats = True)
+BD_results, SD_results, HH_results, beats_results, downbeats_results, global_results = postProcessing.computeResults(dataset, y_hat_grouped, test_track_IDs, peak_thres, rec_half_length)
 print(np.mean(global_results['fmeasure']))
 
 #%%
 test_track_ID = 0 # n° test (see test_track_IDs)
-postProcessing.visualizeModelPredictionPerTrack(test_track_ID, dataset, y_hat_grouped, test_track_IDs, BD_results, SD_results, HH_results, global_results, beats_results, downbeats_results)
+postProcessing.visualizeModelPredictionPerTrack(test_track_ID, dataset, y_hat_grouped, test_track_IDs, BD_results, SD_results, HH_results, global_results)

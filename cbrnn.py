@@ -14,24 +14,23 @@ from dataGenerator import DataGenerator
 import numpy as np
 import utilities
 import postProcessing
-import matplotlib.pyplot as plt
 import keras.backend as K
 
 #%% Parameters
 params = {'dim_x': 168,
-          'dim_y': 13,
+          'dim_y': 9,
           'batch_size': 8,
           'shuffle': True,
           'task': 'CBRNN',
-          'context_frames': 13,
-          'sequential_frames': 400}
+          'context_frames': 9,
+          'sequential_frames': 100,
+          'beatsAndDownbeats': True}
 
-index_first_solo_drums = 131
 dataFilter = "rbma"
 
 #%% Dataset load
 dataset = Dataset()
-dataset.loadDataset()
+dataset.loadDataset(enst_solo = False)
 
 #%% all IDs
 list_IDs = dataset.generate_IDs(params['task'], context_frames = params['context_frames'], sequential_frames = params['sequential_frames'], dataFilter=dataFilter)
@@ -83,7 +82,7 @@ rnn_output = Dense(3, activation='sigmoid')(x_rnn)
 
 cbrnn_model = Model(inputs=rnn_input, outputs=rnn_output)
 print(cbrnn_model.summary())
-optimizer = keras.optimizers.RMSprop(lr=0.0005)
+optimizer = keras.optimizers.Adagrad()
 cbrnn_model.compile(loss=keras.losses.binary_crossentropy, optimizer=optimizer, metrics=['accuracy'])
 
 #%%

@@ -12,8 +12,6 @@ from keras.models import Sequential, Model
 from dataset import Dataset
 from dataGenerator import DataGenerator
 import numpy as np
-import utilities
-import matplotlib.pyplot as plt
 import keras.backend as K
 import manage_gpus as gpl
 import time
@@ -49,16 +47,15 @@ with tf.device(comp_device):
               'task': 'CBRNN',
               'context_frames': 9,
               'beatsAndDownbeats': False, 
-              'multiTask': True,
+              'multiTask': False,
               'difference_spectrogram': True,
               'sequential_frames': 100}
     
-    index_first_solo_drums = 131
     dataFilter = 'rbma'
     
     # Dataset load
     dataset = Dataset()
-    dataset.loadDataset()
+    dataset.loadDataset(enst_solo = False)
        
     # all IDs
     list_IDs = dataset.generate_IDs(params['task'], context_frames = params['context_frames'], sequential_frames = params['sequential_frames'], dataFilter=dataFilter)
@@ -155,7 +152,7 @@ with tf.device(comp_device):
                 no_improv_count = 0
         
         print("---> val loss: " + str(cur_val_loss) + " ; val acc: " + str(cur_val_acc))
-    cbrnn_model.save('RBMA-CBRNNa-MT-nodropout-epochs{}-vacc{}.hdf5'.format(i, cur_val_acc))
+    cbrnn_model.save('RBMA-CBRNN-nodropout-epochs{}-vacc{}.hdf5'.format(i, cur_val_acc))
 
 
 if gpu_id_locked >= 0:

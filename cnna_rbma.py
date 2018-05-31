@@ -14,8 +14,6 @@ from dataGenerator import DataGenerator
 from keras.callbacks import ReduceLROnPlateau, ModelCheckpoint
 import numpy as np
 import keras.backend as K
-import matplotlib.pyplot as plt
-import utilities
 import manage_gpus as gpl
 import time
 import tensorflow as tf
@@ -61,15 +59,14 @@ with tf.device(comp_device):
               'task': 'CNN',
               'context_frames': 9,
               'beatsAndDownbeats': False, 
-              'multiTask': True,
+              'multiTask': False,
               'difference_spectrogram': True}
     
-    index_first_solo_drums = 131
     dataFilter = "rbma"
     
     # Dataset load
     dataset = Dataset()
-    dataset.loadDataset(spread_length = 2)
+    dataset.loadDataset(enst_solo = False, spread_length = 2)
     
     # all IDs
     list_IDs = dataset.generate_IDs(params['task'], stride = 0, context_frames = params['context_frames'], dataFilter=dataFilter)
@@ -107,7 +104,7 @@ with tf.device(comp_device):
     else:
         model.add(Dense(5, activation='sigmoid', kernel_initializer='he_uniform'))
     
-    optimizer = keras.optimizers.RMSprop(lr=0.001)
+    optimizer = keras.optimizers.Adagrad(lr=0.01)
     model.compile(loss=keras.losses.binary_crossentropy, optimizer=optimizer, metrics=['accuracy'])
     
     LRPlateau = ReduceLROnPlateau(factor=0.5, verbose=1, patience=10)
@@ -136,7 +133,7 @@ with tf.device(comp_device):
         training_generator = DataGenerator(**params).generate(dataset, training_IDs)    
         validation_generator = DataGenerator(**params).generate(dataset, validation_IDs)
     
-        model.fit_generator(generator = training_generator, steps_per_epoch = len(training_IDs)//params['batch_size'], validation_data = validation_generator, validation_steps = len(validation_IDs)//params['batch_size'], epochs=1, callbacks=[LRPlateau])
+        model.fit_generator(generator = training_generator, steps_per_epoch = len(training_IDs)//params['batch_size'], validation_data = validation_generator, validation_steps = len(validation_IDs)//params['batch_size'], epochs=1)
     
         # check validation accuracy evolution for refinement
         cur_val_loss, cur_val_acc = model.evaluate_generator(validation_generator, steps=len(validation_IDs)//params['batch_size'])
@@ -154,7 +151,7 @@ with tf.device(comp_device):
                 no_improv_count = 0
         
         print("---> val loss: " + str(cur_val_loss) + " ; val acc: " + str(cur_val_acc))
-    model.save('RBMA-CNNa-MT-dropout0.3-epochs{}-vacc{}.hdf5'.format(i, cur_val_acc))
+    model.save('RBMA-CNNa-dropout0.3-epochs{}-vacc{}.hdf5'.format(i, cur_val_acc))
 
 
 if gpu_id_locked >= 0:
