@@ -24,11 +24,11 @@ os.environ["CUDA_VISIBLE_DEVICES"]= ""
 
 # parameters
 params = {'dim_x': 168,
-          'dim_y': 9,
+          'dim_y': 25,
           'batch_size': 1,
           'shuffle': True,
           'task': 'CNN',
-          'context_frames': 9,
+          'context_frames': 25,
           'sequential_frames': 100,
           'beatsAndDownbeats': False, 
           'multiTask': False,
@@ -45,7 +45,7 @@ dataFilter = 'bb'
 list_IDs = dataset.generate_IDs(params['task'], context_frames = params['context_frames'], sequential_frames = params['sequential_frames'], dataFilter=dataFilter)
 
 list_IDs_per_track = []
-for i in range(375,1175):
+for i in range(374,375):
     list_IDs_per_track.append([ID for ID in list_IDs if ID[0] == i])
 
 #%%
@@ -55,7 +55,7 @@ print(model_name + ' loaded for annotation generation.')
 #print(model.summary())
 
 for j, track_IDs in enumerate(list_IDs_per_track):
-    audio_name = dataset.data['audio_name'][375+j]
+    audio_name = dataset.data['audio_name'][374+j]
 #    print(audio_name)
     n_IDs = len(track_IDs)
     
@@ -86,13 +86,13 @@ for j, track_IDs in enumerate(list_IDs_per_track):
         sd = y_hat[:, 1]
         hh = y_hat[:, 2]
     
-    if not os.path.isdir('./' + teacher_name):
-        os.makedirs(teacher_name)
+    if not os.path.isdir('./billboard/target/' + teacher_name):
+        os.makedirs('./billboard/target/' + teacher_name)
         print(teacher_name + ' folder created.')
     
-    np.save('./' + teacher_name + '/' + audio_name + '_BD', bd)
-    np.save('./' + teacher_name + '/' + audio_name + '_SD', sd)
-    np.save('./' + teacher_name + '/' + audio_name + '_HH', hh)        
+    np.save('./billboard/target/' + teacher_name + '/' + audio_name + '_BD', bd)
+    np.save('./billboard/target/' + teacher_name + '/' + audio_name + '_SD', sd)
+    np.save('./billboard/target/' + teacher_name + '/' + audio_name + '_HH', hh)        
     
     print(audio_name + ' done')
 

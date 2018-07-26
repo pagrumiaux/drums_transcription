@@ -6,14 +6,13 @@ Created on Thu Feb 22 18:01:54 2018
 @author: grumiaux
 """
 
-import keras
-from keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten, BatchNormalization
-from keras.models import Sequential
+#import keras
+#from keras.layers import Dense, Conv2D, MaxPooling2D, Dropout, Flatten, BatchNormalization
+#from keras.models import Sequential
+#import keras.backend as K
 from dataset import Dataset
 from dataGenerator import DataGenerator
-from keras.callbacks import ReduceLROnPlateau, ModelCheckpoint
 import numpy as np
-import keras.backend as K
 import postProcessing
 
 #%%
@@ -25,13 +24,14 @@ params = {'dim_x': 168,
           'context_frames': 9,
           'beatsAndDownbeats': False,
           'multiTask': False,
-          'difference_spectrogram': True}
+          'difference_spectrogram': True,
+          'multiInput': False}
 
 dataFilter = 'enst'
 
 #%% Dataset load
 dataset = Dataset()
-dataset.loadDataset(enst_solo = True)
+dataset.loadDataset(enst_solo = False)
 
 #%% all IDs
 list_IDs = dataset.generate_IDs(params['task'], stride = 0, context_frames = params['context_frames'], dataFilter=dataFilter)
@@ -126,7 +126,7 @@ y_hat = model.predict(X_test, verbose=1)
 
 #%% F measure for BD, SD and HH on the test set
 peak_thres = 0.2
-rec_half_length = 2
+rec_half_length = 0
 
 y_hat_grouped, test_track_IDs = postProcessing.groupePredictionSamplesByTrack(y_hat, test_IDs)
 BD_results, SD_results, HH_results, beats_results, downbeats_results, global_results = postProcessing.computeResults(dataset, y_hat_grouped, test_track_IDs, peak_thres, rec_half_length)
@@ -134,4 +134,3 @@ print(np.mean(global_results['fmeasure']))
 #%% Visualization
 test_track_ID = 0 # n° test (see test_track_IDs)
 postProcessing.visualizeModelPredictionPerTrack(test_track_ID, dataset, y_hat_grouped, test_track_IDs, BD_results, SD_results, HH_results, global_results)
-

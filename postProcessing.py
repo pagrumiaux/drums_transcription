@@ -112,6 +112,7 @@ def groupePredictionSamplesByTrack(y_test, test_IDs):
     
     cur_track_ID = test_IDs[0][0]
     list_to_concat = []
+#    print(len(test_IDs), y_test.shape)
     for i, ID in enumerate(test_IDs):
         if n_dim == 3:
             if ID[0] != cur_track_ID:
@@ -121,7 +122,6 @@ def groupePredictionSamplesByTrack(y_test, test_IDs):
                 test_track_IDs.append(cur_track_ID)
                 cur_track_ID = ID[0]
                 
-    
             list_to_concat.append(y_test[i, :, :])   
             if ID == test_IDs[-1]:
                 y_test_concat = np.concatenate(list_to_concat, axis=0)
@@ -129,7 +129,7 @@ def groupePredictionSamplesByTrack(y_test, test_IDs):
                 test_track_IDs.append(cur_track_ID)
         
         elif n_dim == 2:
-            if ID[0] != cur_track_ID:
+            if ID[0] != cur_track_ID or ID == test_IDs[-1]:
                 y_test_concat = np.stack(list_to_concat)
                 y_test_grouped.append(y_test_concat)
                 list_to_concat = []
@@ -147,11 +147,8 @@ def computeResults(dataset, y_hat_grouped, test_track_IDs, peak_thres, rec_half_
     beats_results = {'precision': [], 'recall': [], 'fmeasure': []}
     downbeats_results = {'precision': [], 'recall': [], 'fmeasure': []}
     global_results = {'precision': [], 'recall': [], 'fmeasure': []}
-    
-#    y_hat_grouped, test_track_IDs = groupePredictionSamplesByTrack(y_hat, test_IDs)
-    
+        
     for i, ID in enumerate(test_track_IDs):
-#        print(i)
         
         # BD events
         if soloDrum == None or soloDrum == "BD":
@@ -159,6 +156,7 @@ def computeResults(dataset, y_hat_grouped, test_track_IDs, peak_thres, rec_half_
             BD_est_events = activationToEvents(BD_est_activation, peak_thres, rec_half_length)
             BD_ref_events = np.array(dataset.data['BD_annotations'][ID])
             BD_est_pitches = np.ones(len(BD_est_events))
+#            print(ID, type(BD_ref_events), BD_ref_events)
             BD_ref_pitches = np.ones(len(BD_ref_events))
             BD_precision, BD_recall, BD_fmeasure = f_measure(BD_est_events, BD_ref_events, BD_est_pitches, BD_ref_pitches)
             BD_results['precision'].append(BD_precision)

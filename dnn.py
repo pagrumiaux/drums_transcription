@@ -6,13 +6,11 @@ Created on Mon Feb 26 11:48:27 2018
 @author: grumiaux
 """
 
-# =============================================================================
-# import keras
-# from keras.models import Sequential
-# from keras.layers import GRU, Bidirectional, Dense
-# from keras.optimizers import RMSprop
-# import keras.backend as K
-# =============================================================================
+#import keras
+#from keras.models import Sequential
+#from keras.layers import Dense, BatchNormalization
+#import keras.optimizers
+#import keras.backend as K
 from dataset import Dataset
 from dataGenerator import DataGenerator
 import numpy as np
@@ -21,17 +19,17 @@ import matplotlib.pyplot as plt
 from math import fmod
 
 #%%
-params = {'dim_x': 100,
+params = {'dim_x': 168,
           'dim_y': 168,
           'batch_size': 8,
           'shuffle': True,
-          'task': 'RNN',
+          'task': 'DNN',
           'sequential_frames': 100,
           'beatsAndDownbeats': False, 
-          'multiTask': True,
+          'multiTask': False,
           'difference_spectrogram': True}
 
-dataFilter = 'rbma'
+dataFilter = 'enst'
 
 #%% Dataset load
 dataset = Dataset()
@@ -50,23 +48,22 @@ training_IDs = train_IDs[:n_train_IDs]
 validation_IDs = train_IDs[n_train_IDs:]
 
 #%% Model initialization
-#units = 30
-units = 50
-input_shape = (params['dim_x'], params['dim_y'])
+input_shape = params['dim_x']
 
 model = Sequential()
-model.add(Bidirectional(GRU(units, return_sequences=True), input_shape=input_shape))
-model.add(Bidirectional(GRU(units, return_sequences=True)))
-#model.add(Bidirectional(GRU(units, return_sequences=True)))
+model.add(Dense(168, input_shape=(168,)))
+model.add(Dense(168, activation='tanh'))
+model.add(BatchNormalization())
+model.add(Dense(84, activation='relu'))
+model.add(Dense(32, activation='relu'))
+
 if not params['multiTask']:
     model.add(Dense(3, activation='sigmoid'))
 else:
     model.add(Dense(5, activation='sigmoid'))
-optimizer = RMSprop(lr=0.007)
-model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
-LRPlateau = ReduceLROnPlateau(factor=0.5, verbose=1, patience=5)
-Checkpoint = ModelCheckpoint("SMT-BGRUa-2.{val_loss:.2f}.hdf5", verbose=1)
+optimizer = keras.optimizers.SGD()
+model.compile(loss='mean_squared_error', optimizer=optimizer, metrics=['accuracy'])
 
 #%% Model training
 patience = 5
@@ -107,11 +104,6 @@ for i in range(epochs):
     print("---> val loss: " + str(cur_val_loss) + " ; val acc: " + str(cur_val_acc))
     
 #%% Generate test prediction
-    
-# we remove the overlapping IDs
-#test_IDs_no_overlap = [i for i in test_IDs if fmod(i[1], params['sequential_frames']) == 0]
-
-
 X_test = np.empty((len(test_IDs), params['dim_x'], params['dim_y']))
 for i in range(len(test_IDs)):
     X_test[i, :, :] = DataGenerator(**params).extract_feature(dataset, test_IDs[i])
@@ -127,5 +119,5 @@ BD_results, SD_results, HH_results, beats_results, downbeats_results, global_res
 print(np.mean(global_results['fmeasure']))
 
 #%%
-test_track_ID = 1 # n° test (see test_track_IDs)
+test_track_ID =0 # n° test (see test_track_IDs)
 postProcessing.visualizeModelPredictionPerTrack(test_track_ID, dataset, y_hat_grouped, test_track_IDs, BD_results, SD_results, HH_results, global_results)

@@ -6,15 +6,15 @@ Created on Thu Feb 22 18:01:54 2018
 @author: grumiaux
 """
 
-import keras
-from keras.layers import Input, Dense, Conv2D, MaxPooling2D, Dropout, Flatten, GRU, Bidirectional, BatchNormalization, TimeDistributed
-from keras.models import Sequential, Model
+#import keras
+#from keras.layers import Input, Dense, Conv2D, MaxPooling2D, Dropout, Flatten, GRU, Bidirectional, BatchNormalization, TimeDistributed
+#from keras.models import Sequential, Model
+#import keras.backend as K
 from dataset import Dataset
 from dataGenerator import DataGenerator
 import numpy as np
 import utilities
 import postProcessing
-import keras.backend as K
 
 #%% Parameters
 params = {'dim_x': 168,
@@ -24,9 +24,9 @@ params = {'dim_x': 168,
           'task': 'CBRNN',
           'context_frames': 9,
           'sequential_frames': 100,
-          'beatsAndDownbeats': True}
+          'beatsAndDownbeats': False}
 
-dataFilter = "rbma"
+dataFilter = "enst"
 
 #%% Dataset load
 dataset = Dataset()
@@ -135,10 +135,10 @@ y_hat = cbrnn_model.predict(X_test, verbose=1)
 peak_thres = 0.2
 rec_half_length = 0
 
-y_hat_grouped, test_track_IDs = postProcessing.groupePredictionSamplesByTrack(y_hat, test_IDs)
+y_hat_grouped, test_track_IDs = postProcessing.groupePredictionSamplesByTrack(y_hat, list_IDs)
 BD_results, SD_results, HH_results, beats_results, downbeats_results, global_results = postProcessing.computeResults(dataset, y_hat_grouped, test_track_IDs, peak_thres, rec_half_length, FmWithBeats = False)
 print(np.mean(global_results['fmeasure']))
 
 #%%
-test_track_ID = 1 # n° test (see test_track_IDs)
+test_track_ID = 34 # n° test (see test_track_IDs)
 postProcessing.visualizeModelPredictionPerTrack(test_track_ID, dataset, y_hat_grouped, test_track_IDs, BD_results, SD_results, HH_results, global_results)
