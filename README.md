@@ -1,4 +1,4 @@
-# drums_transcription
+# Automatic drums transcription using neural networks
 
 This repository contains the work I've done during an internship at IRCAM in 2018. The goal of the internship was to create a CRNN for drums transcription, along with the teacher-student paradigm.  
 You can find the report of this internship [here](http://www.atiam.ircam.fr/Archives/Stages1718/GRUMIAUX_Pierre-Amaury_Memoire_Stage.pdf) (it's in French though)
