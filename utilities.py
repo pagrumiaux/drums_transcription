@@ -14,7 +14,6 @@ def duplicateTrainingSamples(dataset, training_IDs, ratio = 10):
         sd = dataset.data['SD_target'][ID[0]][ID[1]]
         hh = dataset.data['HH_target'][ID[0]][ID[1]]
         if bd or sd or hh:
-
             for i in range(ratio-1):
                 training_IDs_with_duplicate.append(ID)
     return training_IDs_with_duplicate

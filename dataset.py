@@ -13,7 +13,6 @@ import xml.etree.ElementTree as et
 from utilities import spreadTargetFunctions
 import pickle
 
-
 folder_rbma = "./rbma_13/"
 folder_smt = "./SMT_DRUMS/"
 folder_enst = "./ENST-drums/"
