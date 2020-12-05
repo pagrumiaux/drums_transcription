@@ -22,11 +22,17 @@ params = {'dim_x': 168,
           'batch_size': 8,
           'shuffle': True,
           'task': 'CNN',
-          'context_frames': 25}
+          'context_frames': 25,
+          'beats': False}
 
 #%%
-dataset = Dataset()
-dataset.loadDataset()
+folder_rbma = './datasets/RBMA_13/'
+folder_smt = './datasets/SMT_drums/'
+folder_enst = None
+enst_solo = False
+
+dataset = Dataset(folder_rbma = folder_rbma, folder_smt = folder_smt, folder_enst = folder_enst)
+dataset.load_dataset()
 
 #%% three fold cross validation
 list_IDs = dataset.generate_IDs(params['task'], dataFilter='smt')

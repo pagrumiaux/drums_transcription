@@ -15,7 +15,7 @@ import pickle
 
 
 class Dataset:
-    def __init__(self, folder_rbma, folder_smt, folder_enst):
+    def __init__(self, folder_rbma=None, folder_smt=None, folder_enst=None, enst_solo=False):
         self.data = {'audio_name': [], 'mel_spectrogram': [], 'dataset': [],
                      'BD_target': [], 'SD_target': [], 'HH_target': [],
                      'beats_target': [], 'downbeats_target': [],
@@ -23,142 +23,58 @@ class Dataset:
                      'HH_annotations': [], 'beats_annotations': [],
                      'downbeats_annotations': []
                     }
-        self.split = {'rbma_train_IDs': [], 'rbma_test_IDs': [],
-                      'smt_train_IDs': [], 'smt_test_IDs':[]
+        self.split = {'rbma_train_files': [], 'rbma_test_files': [],
+                      'smt_train_files': [], 'smt_test_files': [],
+                      'enst_train_files': [], 'enst_test_files': []
                      }
         self.standardization = {}
         
         self.folder_rbma = folder_rbma
         self.folder_smt = folder_smt
         self.folder_enst = folder_enst
+        
+        self.enst_solo = enst_solo
+        
+        self.load_dataset()
+        
+    def __len__(self):
+        return len(self.data['audio_name'])
     
-    def load_dataset(self, enst_solo, bb_annotations_folder = None, spread_length = None):    
+    def load_dataset(self, bb_annotations_folder = None, spread_length = None):    
         
         # RBMA load
-        self.load_data('rbma')
-        print("RBMA dataset loaded.")
+        if self.folder_rbma is not None:
+            self.load_data('rbma')
+            print("RBMA dataset loaded.")
         
         # SMT load
-        self.load_data('smt')
-        print("SMT dataset loaded.")
+        if self.folder_smt is not None:
+            self.load_data('smt')
+            print("SMT dataset loaded.")
         
         # ENST load
-        self.load_data('enst', enst_solo)
-        print("ENST dataset loaded.")
-        
-        
-        # # RBMA load
-        # audio_names_rbma = self.extractAudioNamesRbma()
-        # for audio in audio_names_rbma:
-        #     self.data['audio_name'].append(audio)
-        #     mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations = self.extractMelSpectrogramAndAnnotationsRbma(audio)
-        #     self.data['mel_spectrogram'].append(mel_spectrogram)
-        #     self.data['dataset'].append('rbma')
-        #     self.data['BD_annotations'].append(BD_annotations)
-        #     self.data['BD_target'].append(self.annotationsToTargetFunctions(BD_annotations, mel_spectrogram.shape[1]))
-        #     self.data['SD_annotations'].append(SD_annotations)
-        #     self.data['SD_target'].append(self.annotationsToTargetFunctions(SD_annotations, mel_spectrogram.shape[1]))
-        #     self.data['HH_annotations'].append(HH_annotations)
-        #     self.data['HH_target'].append(self.annotationsToTargetFunctions(HH_annotations, mel_spectrogram.shape[1]))
-        #     self.data['beats_annotations'].append(beats_annotations)
-        #     self.data['beats_target'].append(self.annotationsToTargetFunctions(beats_annotations, mel_spectrogram.shape[1]))
-        #     self.data['downbeats_annotations'].append(downbeats_annotations)
-        #     self.data['downbeats_target'].append(self.annotationsToTargetFunctions(downbeats_annotations, mel_spectrogram.shape[1]))
-            
-        # with open(self.folder_rbma + "data/other/train_IDs", "rb") as f:
-        #     self.split['rbma_train_IDs'] = pickle.load(f)
-        # with open(self.folder_rbma + "data/other/test_IDs", "rb") as f:
-        #     self.split['rbma_test_IDs'] = pickle.load(f)
-        # with open(self.folder_rbma + "data/other/train_mel_mean", "rb") as f:
-        #     self.standardization['rbma_mel_mean'] = pickle.load(f)   
-        # with open(self.folder_rbma + "data/other/train_mel_var", "rb") as f:
-        #     self.standardization['rbma_mel_var'] = pickle.load(f)
-        
-        # print("Rbma dataset loaded.")
-        
-        # # SMT load
-        # audio_names_smt = self.extractAudioNamesSmt()
-        # for audio in audio_names_smt:
-        #     self.data['audio_name'].append(audio)
-        #     mel_spectrogram, BD_annotations, SD_annotations, HH_annotations = self.extractMelSpectrogramAndAnnotationsSmt(audio)
-        #     self.data['mel_spectrogram'].append(mel_spectrogram)
-        #     self.data['dataset'].append('smt')
-        #     self.data['BD_annotations'].append(BD_annotations)
-        #     self.data['BD_target'].append(self.annotationsToTargetFunctions(BD_annotations, mel_spectrogram.shape[1]))
-        #     self.data['SD_annotations'].append(SD_annotations)
-        #     self.data['SD_target'].append(self.annotationsToTargetFunctions(SD_annotations, mel_spectrogram.shape[1]))
-        #     self.data['HH_annotations'].append(HH_annotations)
-        #     self.data['HH_target'].append(self.annotationsToTargetFunctions(HH_annotations, mel_spectrogram.shape[1]))
-        #     self.data['beats_annotations'].append(None)
-        #     self.data['beats_target'].append(None)
-        #     self.data['downbeats_annotations'].append(None)
-        #     self.data['downbeats_target'].append(None)
-
-        
-        # with open(folder_smt + "data/other/train_IDs", "rb") as f:
-        #     self.split['smt_train_IDs'] = pickle.load(f)
-        # with open(folder_smt + "data/other/test_IDs", "rb") as f:
-        #     self.split['smt_test_IDs'] = pickle.load(f)
-        # with open(folder_smt + "data/other/train_mel_mean", "rb") as f:
-        #     self.standardization['smt_mel_mean'] = pickle.load(f)   
-        # with open(folder_smt + "data/other/train_mel_var", "rb") as f:
-        #     self.standardization['smt_mel_var'] = pickle.load(f)
-        
-        # print('Smt dataset loaded.')
-        
-        # # ENST load
-        # audio_names_enst = self.extractAudioNamesEnst()
-        # for audio in audio_names_enst:
-        #     self.data['audio_name'].append(audio)
-        #     mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations = self.extractMelSpectrogramAndAnnotationsEnst(audio, enst_solo)
-        #     self.data['mel_spectrogram'].append(mel_spectrogram)
-        #     self.data['dataset'].append('enst')
-        #     self.data['BD_annotations'].append(BD_annotations)
-        #     self.data['BD_target'].append(self.annotationsToTargetFunctions(BD_annotations, mel_spectrogram.shape[1]))
-        #     self.data['SD_annotations'].append(SD_annotations)
-        #     self.data['SD_target'].append(self.annotationsToTargetFunctions(SD_annotations, mel_spectrogram.shape[1]))
-        #     self.data['HH_annotations'].append(HH_annotations)
-        #     self.data['HH_target'].append(self.annotationsToTargetFunctions(HH_annotations, mel_spectrogram.shape[1]))
-        #     self.data['beats_annotations'].append(beats_annotations)
-        #     self.data['beats_target'].append(self.annotationsToTargetFunctions(beats_annotations, mel_spectrogram.shape[1]))
-        #     self.data['downbeats_annotations'].append(downbeats_annotations)
-        #     self.data['downbeats_target'].append(self.annotationsToTargetFunctions(downbeats_annotations, mel_spectrogram.shape[1]))
-            
-        # with open(folder_enst + "data/other/train_IDs", "rb") as f:
-        #     self.split['enst_train_IDs'] = pickle.load(f)
-        # with open(folder_enst + "data/other/test_IDs", "rb") as f:
-        #     self.split['enst_test_IDs'] = pickle.load(f)
-        # if not enst_solo:
-        #     with open(folder_enst + "data/other/train_mel_mean", "rb") as f:
-        #         self.standardization['enst_mel_mean'] = pickle.load(f)   
-        #     with open(folder_enst + "data/other/train_mel_var", "rb") as f:
-        #         self.standardization['enst_mel_var'] = pickle.load(f)
-        # else:
-        #     with open(folder_enst + "data/other/train_mel_mean_solo", "rb") as f:
-        #         self.standardization['enst_mel_mean'] = pickle.load(f)   
-        #     with open(folder_enst + "data/other/train_mel_var_solo", "rb") as f:
-        #         self.standardization['enst_mel_var'] = pickle.load(f)
-            
-        # print("Enst dataset loaded.")
+        if self.folder_enst is not None:
+            self.load_data('enst', self.enst_solo)
+            print("ENST dataset loaded.")
 
 
         # # Billboard load
         # audio_names_bb = self.extractAudioNamesBillboard()
         # for audio in audio_names_bb:
         #     self.data['audio_name'].append(audio)
-        #     mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, donwbeats_annotations = self.extractMelSpectrogramAndAnnotationsBillboard(audio, bb_annotations_folder)
+        #     mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, donwbeats_annotations = self.extract_data_bb(audio, bb_annotations_folder)
         #     self.data['mel_spectrogram'].append(mel_spectrogram)
         #     self.data['dataset'].append('billboard')
         #     self.data['BD_annotations'].append(BD_annotations)
-        #     self.data['BD_target'].append(self.annotationsToTargetFunctions(BD_annotations, mel_spectrogram.shape[1]))
+        #     self.data['BD_target'].append(self.annotation_to_target(BD_annotations, mel_spectrogram.shape[1]))
         #     self.data['SD_annotations'].append(SD_annotations)
-        #     self.data['SD_target'].append(self.annotationsToTargetFunctions(SD_annotations, mel_spectrogram.shape[1]))
+        #     self.data['SD_target'].append(self.annotation_to_target(SD_annotations, mel_spectrogram.shape[1]))
         #     self.data['HH_annotations'].append(HH_annotations)
-        #     self.data['HH_target'].append(self.annotationsToTargetFunctions(HH_annotations, mel_spectrogram.shape[1]))
+        #     self.data['HH_target'].append(self.annotation_to_target(HH_annotations, mel_spectrogram.shape[1]))
         #     self.data['beats_annotations'].append(beats_annotations)
-        #     self.data['beats_target'].append(self.annotationsToTargetFunctions(beats_annotations, mel_spectrogram.shape[1]))
+        #     self.data['beats_target'].append(self.annotation_to_target(beats_annotations, mel_spectrogram.shape[1]))
         #     self.data['downbeats_annotations'].append(downbeats_annotations)
-        #     self.data['downbeats_target'].append(self.annotationsToTargetFunctions(downbeats_annotations, mel_spectrogram.shape[1]))
+        #     self.data['downbeats_target'].append(self.annotation_to_target(downbeats_annotations, mel_spectrogram.shape[1]))
             
         # self.split['bb_train_IDs'] = list(range(800))
         # self.split['bb_test_IDs'] = []
@@ -197,33 +113,33 @@ class Dataset:
             
             # Extract spectrograms and annotations within the dataset folder
             if dataset_name == 'rbma':
-                mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations = self.extractMelSpectrogramAndAnnotationsRbma(audio)
+                mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations = self.extract_data_rbma(audio)
             elif dataset_name == 'smt':
-                mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations = self.extractMelSpectrogramAndAnnotationsSmt(audio)
+                mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations = self.extract_data_smt(audio)
             elif dataset_name == 'enst':
-                mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations = self.extractMelSpectrogramAndAnnotationsEnst(audio)
+                mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations = self.extract_data_enst(audio)
             
             # Load data
             self.data['mel_spectrogram'].append(mel_spectrogram)
             self.data['dataset'].append('rbma')
             self.data['BD_annotations'].append(BD_annotations)
-            self.data['BD_target'].append(self.annotationsToTargetFunctions(BD_annotations, mel_spectrogram.shape[1]))
+            self.data['BD_target'].append(self.annotation_to_target(BD_annotations, mel_spectrogram.shape[1]))
             self.data['SD_annotations'].append(SD_annotations)
-            self.data['SD_target'].append(self.annotationsToTargetFunctions(SD_annotations, mel_spectrogram.shape[1]))
+            self.data['SD_target'].append(self.annotation_to_target(SD_annotations, mel_spectrogram.shape[1]))
             self.data['HH_annotations'].append(HH_annotations)
-            self.data['HH_target'].append(self.annotationsToTargetFunctions(HH_annotations, mel_spectrogram.shape[1]))
+            self.data['HH_target'].append(self.annotation_to_target(HH_annotations, mel_spectrogram.shape[1]))
             self.data['beats_annotations'].append(beats_annotations)
-            self.data['beats_target'].append(self.annotationsToTargetFunctions(beats_annotations, mel_spectrogram.shape[1]))
+            self.data['beats_target'].append(self.annotation_to_target(beats_annotations, mel_spectrogram.shape[1]))
             self.data['downbeats_annotations'].append(downbeats_annotations)
-            self.data['downbeats_target'].append(self.annotationsToTargetFunctions(downbeats_annotations, mel_spectrogram.shape[1]))
+            self.data['downbeats_target'].append(self.annotation_to_target(downbeats_annotations, mel_spectrogram.shape[1]))
             
         # Load training/validation/test splits and standardization mean and var values in the dataset folder
         if dataset_name == 'rbma':
             # RBMA dataset
-            with open(self.folder_rbma + "data/other/train_IDs", "rb") as f:
-                self.split['rbma_train_IDs'] = pickle.load(f)
-            with open(self.folder_rbma + "data/other/test_IDs", "rb") as f:
-                self.split['rbma_test_IDs'] = pickle.load(f)
+            with open(self.folder_rbma + "split/train_files", "rb") as f:
+                self.split['rbma_train_files'] = pickle.load(f)
+            with open(self.folder_rbma + "split/test_files", "rb") as f:
+                self.split['rbma_test_files'] = pickle.load(f)
             with open(self.folder_rbma + "data/other/train_mel_mean", "rb") as f:
                 self.standardization['rbma_mel_mean'] = pickle.load(f)   
             with open(self.folder_rbma + "data/other/train_mel_var", "rb") as f:
@@ -231,10 +147,10 @@ class Dataset:
                 
         elif dataset_name == 'smt':
             # SMT dataset
-            with open(self.folder_smt + "data/other/train_IDs", "rb") as f:
-                self.split['smt_train_IDs'] = pickle.load(f)
-            with open(self.folder_smt + "data/other/test_IDs", "rb") as f:
-                self.split['smt_test_IDs'] = pickle.load(f)
+            with open(self.folder_smt + "split/train_files", "rb") as f:
+                self.split['smt_train_files'] = pickle.load(f)
+            with open(self.folder_smt + "split/test_files", "rb") as f:
+                self.split['smt_test_files'] = pickle.load(f)
             with open(self.folder_smt + "data/other/train_mel_mean", "rb") as f:
                 self.standardization['smt_mel_mean'] = pickle.load(f)   
             with open(self.folder_smt + "data/other/train_mel_var", "rb") as f:
@@ -242,10 +158,10 @@ class Dataset:
                 
         elif dataset_name == 'enst':
             # ENST dataset
-            with open(self.folder_enst + "data/other/train_IDs", "rb") as f:
-                self.split['enst_train_IDs'] = pickle.load(f)
-            with open(self.folder_enst + "data/other/test_IDs", "rb") as f:
-                self.split['enst_test_IDs'] = pickle.load(f)
+            with open(self.folder_enst + "split/train_files", "rb") as f:
+                self.split['enst_train_files'] = pickle.load(f)
+            with open(self.folder_enst + "split/test_files", "rb") as f:
+                self.split['enst_test_files'] = pickle.load(f)
             if enst_solo:
                 with open(self.folder_enst + "data/other/train_mel_mean_solo", "rb") as f:
                     self.standardization['enst_mel_mean'] = pickle.load(f)   
@@ -296,7 +212,7 @@ class Dataset:
     #     audio_names_bb = sorted(audio_names_bb)
     #     return audio_names_bb
         
-    def extractMelSpectrogramAndAnnotationsRbma(self, audio_name, sr = 44100):
+    def extract_data_rbma(self, audio_name, sr = 44100):
         """ Compute the mel spectrogram of ONE track and extract the annotations
             input:
                 name of the single audio track to extraction information without extension
@@ -331,11 +247,13 @@ class Dataset:
         
         return mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations
                          
-    def extractMelSpectrogramAndAnnotationsSmt(self, audio_name, sr = 44100):
+    def extract_data_smt(self, audio_name, sr = 44100):
         # annotations variables initialization
         BD_annotations = []
         SD_annotations = []
         HH_annotations = []
+        beats_annotations = []
+        downbeats_annotations = []
         
         # mel spectrogram extraction
         mel_spectrogram = np.load(self.folder_smt + "data/log_mel/" + audio_name + ".npy")
@@ -365,9 +283,9 @@ class Dataset:
             BD_annotations = []
             SD_annotations = []
                 
-        return mel_spectrogram, BD_annotations, SD_annotations, HH_annotations
+        return mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations
     
-    def extractMelSpectrogramAndAnnotationsEnst(self, audio_name, enst_solo, sr = 44100):
+    def extract_data_enst(self, audio_name, sr = 44100):
         # annotations variables initialization
         BD_annotations = []
         SD_annotations = []
@@ -376,7 +294,7 @@ class Dataset:
         downbeats_annotations = []
         
         # mel spectrogram extraction
-        if enst_solo:
+        if self.enst_solo:
             mel_spectrogram = np.load(self.folder_enst + "data/log_mel/drums/" + audio_name + ".npy")
         else:
             mel_spectrogram = np.load(self.folder_enst + "data/log_mel/mix66/" + audio_name + ".npy")
@@ -407,9 +325,9 @@ class Dataset:
         
         return mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations
     
-    def extractMelSpectrogramAndAnnotationsBillboard(self, audio_name, bb_annotations_folder, sr = 44100):
+    def extract_data_bb(self, audio_name, bb_annotations_folder, sr = 44100):
         # annotations variables initialization
-        mel_spectrogram = np.load(folder_bb + "data/log_mel/" + audio_name + ".npy")
+        mel_spectrogram = np.load(self.folder_bb + "data/log_mel/" + audio_name + ".npy")
         if bb_annotations_folder is not None:
             with open('./billboard/target/' + bb_annotations_folder + '/hard/' + audio_name + '_BD', 'rb') as f:
                 BD_annotations = pickle.load(f)
@@ -436,7 +354,7 @@ class Dataset:
         return mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations
 
     
-    def annotationsToTargetFunctions(self, annotations, n_frames, sr = 44100, frame_rate = 100):
+    def annotation_to_target(self, annotations, n_frames, sr = 44100, frame_rate = 100):
         """ Transform annotations list into target functions
             input:
                 annotations : list of float that represents the positions in seconds
@@ -453,7 +371,7 @@ class Dataset:
         else:
             return None
     
-    def generate_IDs(self, task, stride = 0, context_frames = 25, sequential_frames = 100, dataFilter = None):
+    def generate_IDs(self, task, stride = 0, context_frames = 25, sequential_frames = 100):
         list_IDs = []
         n_audio = len(self.data['mel_spectrogram'])
         for i in range(n_audio):
@@ -469,19 +387,19 @@ class Dataset:
                 for j in range(n_frames):
                     if fmod(j, sequential_frames) == 0:
                         list_IDs.append((i, j))
-#                    list_IDs.append((i, j))
             elif task == 'DNN':
                 for j in range(n_frames):
                     list_IDs.append((i, j))
             
-        if dataFilter != None:
-            if dataFilter == 'rbma':
-                list_IDs = [ID for ID in list_IDs if ID[0] <= 26]
-            elif dataFilter == 'smt':
-                list_IDs = [ID for ID in list_IDs if ID[0] >= 27 and ID[0] <= 310]
-            elif dataFilter == 'enst':
-                list_IDs = [ID for ID in list_IDs if ID[0] >= 311 and ID[0] <= 373]
-            elif dataFilter == 'bb':
-                list_IDs = [ID for ID in list_IDs if ID[0] >= 374]
+        # if dataFilter != None:
+        #     if dataFilter == 'rbma':
+        #         list_IDs = [ID for ID in list_IDs if ID[0] <= 26]
+        #     elif dataFilter == 'smt':
+        #         list_IDs = [ID for ID in list_IDs if ID[0] >= 27 and ID[0] <= 310]
+        #     elif dataFilter == 'enst':
+        #         list_IDs = [ID for ID in list_IDs if ID[0] >= 311 and ID[0] <= 373]
+        #     elif dataFilter == 'bb':
+        #         list_IDs = [ID for ID in list_IDs if ID[0] >= 374]
+        
         return list_IDs
 

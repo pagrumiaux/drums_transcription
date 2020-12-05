@@ -42,7 +42,6 @@ class DataGenerator(object):
         return X, y
                
     def extract_feature(self, dataset, ID):
-#        print(ID)
         audio_ID = ID[0]
         spectro = dataset.data['mel_spectrogram'][audio_ID]
         audio_spectro_length = spectro.shape[1]
@@ -66,7 +65,7 @@ class DataGenerator(object):
             var = var.reshape((mean.shape[0], 1))
         
         
-        # if the network is a FNN
+        # if the network is a DNN
         if self.task == 'DNN':
             feature = spectro[:, ID[1]]
             
