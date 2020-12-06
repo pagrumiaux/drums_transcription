@@ -16,7 +16,7 @@ class DataGenerator(tf.keras.utils.Sequence):
                  task,
                  list_IDs,
                  dataset,
-                 batch_size = 8, 
+                 batch_size, 
                  shuffle = True, 
                  context_frames = 25, 
                  sequential_frames = 100, 
