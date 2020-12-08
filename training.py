@@ -25,14 +25,15 @@ folder_bb = "./datasets/billboard/"
 
 
 #%% Training parameters
-params_train = {'n_bins': 168,
-          'n_frames': 9,
-          'batch_size': 64,
-          'shuffle': True,
-          'task': 'CNN',
+params_train = {'batch_size': 32,
+          'model': 'RNN',
+          'n_bins': 168,
+          'sequential_frames': 100,          
           'context_frames': 9,
-          'sequential_frames': 100,
-          'beats_and_downbeats': False}
+          'shuffle': True,
+          'difference_spectrogram': True,
+          'beats_and_downbeats': False
+          }
 
 #%% Dataset load
 dataset = Dataset(folder_rbma=folder_rbma, folder_smt=folder_smt, folder_enst=folder_enst, 
@@ -41,7 +42,7 @@ dataset = Dataset(folder_rbma=folder_rbma, folder_smt=folder_smt, folder_enst=fo
 print('All datasets loaded.')
 
 #%% generate the IDs for the data generator (train, valid and test)
-list_IDs = dataset.generate_IDs(params_train['task'], 
+list_IDs = dataset.generate_IDs(params_train['model'], 
                                 context_frames = params_train['context_frames'], 
                                 sequential_frames = params_train['sequential_frames'])
 
@@ -81,8 +82,16 @@ valid_generator = DataGenerator(**params_valid)
 print("Training and validation generators instantiated.")
 
 #%% model creation
-model_name = "cnn_contexteFrames9"
-model = models.cnn_model(params_train['context_frames'], params_train['n_bins'])
+model_name = "rnn_contexteFrames9"
+
+rnn_units = 30
+
+if params_train['model'] == 'CNN':
+    model = models.cnn_model(context_frames=params_train['context_frames'], n_bins=params_train['n_bins'])
+elif params_train['model'] == 'RNN':
+    model = models.rnn_model(n_frames=params_train['sequential_frames'], n_bins=params_train['n_bins'], units=rnn_units)
+elif params_train['model'] == 'CBRNN':
+    model = models.cbrnn_model(n_frames=params_train['sequential_frames'], context_frames=params_train['context_frames'], n_bins=params_train['n_bins'], units=rnn_units)
 
 adam = tf.keras.optimizers.Adam()
 model.compile(optimizer=adam,

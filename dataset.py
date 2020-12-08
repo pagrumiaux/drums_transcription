@@ -40,8 +40,7 @@ class Dataset:
     def __len__(self):
         return len(self.data['audio_name'])
     
-    def load_dataset(self, bb_annotations_folder = None, spread_length = None):    
-        
+    def load_dataset(self, bb_annotations_folder = None, spread_length = None):        
         # RBMA load
         if self.folder_rbma is not None:
             self.load_data('rbma')

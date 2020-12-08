@@ -11,9 +11,8 @@ import tensorflow as tf
 class DataGenerator(tf.keras.utils.Sequence):
     'Generates data for Keras'
     def __init__(self, 
-                 n_frames, 
                  n_bins, 
-                 task,
+                 model,
                  list_IDs,
                  dataset,
                  batch_size, 
@@ -28,11 +27,10 @@ class DataGenerator(tf.keras.utils.Sequence):
                  solo_drum = False):
         
         'Initialization'
-        self.n_frames = n_frames
         self.n_bins = n_bins
         self.batch_size = batch_size
         self.shuffle = shuffle
-        self.task = task
+        self.model = model
         self.list_IDs = list_IDs
         self.dataset = dataset
         self.context_frames = context_frames
@@ -62,11 +60,11 @@ class DataGenerator(tf.keras.utils.Sequence):
         else:
             target_dim = 5
         
-        if self.task == 'CNN':
+        if self.model == 'CNN':
             if not self.multiInput:
-                input_feature = np.empty((self.batch_size, self.n_frames, self.n_bins, 1))
+                input_feature = np.empty((self.batch_size, self.context_frames, self.n_bins, 1))
             else:
-                input_feature_1 = np.empty((self.batch_size, self.n_frames, self.n_bins, 1))
+                input_feature_1 = np.empty((self.batch_size, self.context_frames, self.n_bins, 1))
                 input_feature_2 = np.empty((self.batch_size, 2))
             target = np.empty((self.batch_size, target_dim), dtype=int)
             
@@ -83,19 +81,19 @@ class DataGenerator(tf.keras.utils.Sequence):
                     target[i, 3] = self.dataset.data['beats_target'][ID[0]][ID[1]]
                     target[i, 4] = self.dataset.data['downbeats_target'][ID[0]][ID[1]]
 
-        elif self.task == 'RNN':           
-            input_feature = np.empty((self.batch_size, self.n_frames, self.n_bins))
-            target = np.empty((self.batch_size, self.n_frames, target_dim), dtype=int)
+        elif self.model == 'RNN':           
+            input_feature = np.empty((self.batch_size, self.sequential_frames, self.n_bins))
+            target = np.empty((self.batch_size, self.sequential_frames, target_dim), dtype=int)
             for i, ID in enumerate(idx_batch):
                 spectro_length = self.dataset.data['mel_spectrogram'][ID[0]].shape[1]
                 input_feature[i, :, :] = self.extract_feature(ID)
                 if ID[1] >= spectro_length - self.sequential_frames:
-                    target[i, :, 0] = np.concatenate((self.dataset.data['BD_target'][ID[0]][ID[1]:], np.zeros((self.n_frames-(spectro_length-ID[1])))))
-                    target[i, :, 1] = np.concatenate((self.dataset.data['SD_target'][ID[0]][ID[1]:], np.zeros((self.n_frames-(spectro_length-ID[1])))))
-                    target[i, :, 2] = np.concatenate((self.dataset.data['HH_target'][ID[0]][ID[1]:], np.zeros((self.n_frames-(spectro_length-ID[1])))))
+                    target[i, :, 0] = np.concatenate((self.dataset.data['BD_target'][ID[0]][ID[1]:], np.zeros((self.sequential_frames-(spectro_length-ID[1])))))
+                    target[i, :, 1] = np.concatenate((self.dataset.data['SD_target'][ID[0]][ID[1]:], np.zeros((self.sequential_frames-(spectro_length-ID[1])))))
+                    target[i, :, 2] = np.concatenate((self.dataset.data['HH_target'][ID[0]][ID[1]:], np.zeros((self.sequential_frames-(spectro_length-ID[1])))))
                     if self.multiTask:
-                        target[i, :, 3] = np.concatenate((self.dataset.data['beats_target'][ID[0]][ID[1]:], np.zeros((self.n_frames-(spectro_length-ID[1])))))
-                        target[i, :, 4] = np.concatenate((self.dataset.data['downbeats_target'][ID[0]][ID[1]:], np.zeros((self.n_frames-(spectro_length-ID[1])))))
+                        target[i, :, 3] = np.concatenate((self.dataset.data['beats_target'][ID[0]][ID[1]:], np.zeros((self.sequential_frames-(spectro_length-ID[1])))))
+                        target[i, :, 4] = np.concatenate((self.dataset.data['downbeats_target'][ID[0]][ID[1]:], np.zeros((self.sequential_frames-(spectro_length-ID[1])))))
                 else:
                     target[i, :, 0] = self.dataset.data['BD_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
                     target[i, :, 1] = self.dataset.data['SD_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
@@ -104,11 +102,11 @@ class DataGenerator(tf.keras.utils.Sequence):
                         target[i, :, 3] = self.dataset.data['beats_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
                         target[i, :, 4] = self.dataset.data['downbeats_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
                 
-        elif self.task == 'CBRNN':
+        elif self.model == 'CBRNN':
             if not self.multiInput:
-                input_feature = np.empty((self.batch_size, self.sequential_frames, self.n_frames, self.n_bins, 1))
+                input_feature = np.empty((self.batch_size, self.sequential_frames, self.context_frames, self.n_bins, 1))
             else:
-                input_feature_1 = np.empty((self.batch_size, self.sequential_frames, self.n_frames, self.n_bins, 1))
+                input_feature_1 = np.empty((self.batch_size, self.sequential_frames, self.context_frames, self.n_bins, 1))
                 input_feature_2 = np.empty((self.batch_size, self.sequential_frames, 2))
             
             target = np.empty((self.batch_size, self.sequential_frames, target_dim), dtype=int)
@@ -134,17 +132,17 @@ class DataGenerator(tf.keras.utils.Sequence):
                         target[i, :, 3] = self.dataset.data['beats_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
                         target[i, :, 4] = self.dataset.data['downbeats_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
         
-        if self.task == 'DNN':
-            input_feature = np.empty((self.batch_size, self.n_frames))
-            target = np.empty((self.batch_size, target_dim), dtype=int)
-            for i, ID in enumerate(idx_batch):
-                input_feature[i, :] = self.extract_feature(ID)
-                target[i, 0] = self.dataset.data['BD_target'][ID[0]][ID[1]]
-                target[i, 1] = self.dataset.data['SD_target'][ID[0]][ID[1]]
-                target[i, 2] = self.dataset.data['HH_target'][ID[0]][ID[1]]
-                if self.multiTask:
-                    target[i, 3] = self.dataset.data['beats_target'][ID[0]][ID[1]]
-                    target[i, 4] = self.dataset.data['downbeats_target'][ID[0]][ID[1]]
+        # if self.model == 'DNN':
+        #     input_feature = np.empty((self.batch_size, self.n_frames))
+        #     target = np.empty((self.batch_size, target_dim), dtype=int)
+        #     for i, ID in enumerate(idx_batch):
+        #         input_feature[i, :] = self.extract_feature(ID)
+        #         target[i, 0] = self.dataset.data['BD_target'][ID[0]][ID[1]]
+        #         target[i, 1] = self.dataset.data['SD_target'][ID[0]][ID[1]]
+        #         target[i, 2] = self.dataset.data['HH_target'][ID[0]][ID[1]]
+        #         if self.multiTask:
+        #             target[i, 3] = self.dataset.data['beats_target'][ID[0]][ID[1]]
+        #             target[i, 4] = self.dataset.data['downbeats_target'][ID[0]][ID[1]]
 
         if solo_drum is not None:
             if solo_drum == "BD":
@@ -189,7 +187,7 @@ class DataGenerator(tf.keras.utils.Sequence):
         
         
         # if the network is a DNN
-        if self.task == 'DNN':
+        if self.model == 'DNN':
             feature = spectro[:, ID[1]]
             
             if self.diff == True:
@@ -222,19 +220,19 @@ class DataGenerator(tf.keras.utils.Sequence):
             
         
         # if the network is a CNN
-        if self.task == 'CNN':
+        if self.model == 'CNN':
             padding = int((self.context_frames-1)/2)
             if ID[1] < padding:
-                feature = np.concatenate((np.zeros((spectro.shape[0], (padding-ID[1]))), spectro[:, :ID[1]+padding+1]), axis=1)
+                feature = np.concatenate((np.zeros(((padding-ID[1]), spectro.shape[0])), spectro[:, :ID[1]+padding+1].T), axis=0)
             elif ID[1] >= spectro_length - padding:
-                feature = np.concatenate((spectro[:, ID[1]-padding:], np.zeros((spectro.shape[0], padding-(spectro_length-ID[1])+1))), axis=1)
+                feature = np.concatenate((spectro[:, ID[1]-padding:].T, np.zeros((padding-(spectro_length-ID[1])+1, spectro.shape[0]))), axis=0)
             else:
-                feature = spectro[:, (ID[1]-padding):(ID[1]+padding+1)]
+                feature = spectro[:, (ID[1]-padding):(ID[1]+padding+1)].T
             
             if self.diff == True:
-                feature_diff = np.concatenate((np.zeros((feature.shape[0], 1)), np.diff(feature)), axis=1)
+                feature_diff = np.concatenate((np.zeros((1, feature.shape[1])), np.diff(feature, axis=0)), axis=0)
                 feature_diff = np.clip(feature_diff, a_min=0, a_max=None)
-                feature = np.concatenate((feature, feature_diff), axis=0)
+                feature = np.concatenate((feature, feature_diff), axis=1)
                 
 #                mean = np.concatenate((mean, mean), axis=0)
 #                var = np.concatenate((var, var), axis=0)
@@ -261,16 +259,16 @@ class DataGenerator(tf.keras.utils.Sequence):
                 aux_input = np.array([beats, downbeats])
 
         # if the network is a RNN
-        elif self.task == 'RNN':
+        elif self.model == 'RNN':
             if ID[1] >= spectro_length - self.sequential_frames:
-                feature = np.concatenate((spectro[:, ID[1]:], np.zeros((spectro.shape[0], self.sequential_frames-(spectro_length-ID[1])))), axis=1)
+                feature = np.concatenate((spectro[:, ID[1]:].T, np.zeros((self.sequential_frames-(spectro_length-ID[1]), spectro.shape[0]))), axis=0)
             else:
-                feature = spectro[:, ID[1]:ID[1]+self.sequential_frames]
+                feature = spectro[:, ID[1]:ID[1]+self.sequential_frames].T
 
             if self.diff == True:
-                feature_diff = np.concatenate((np.zeros((feature.shape[0], 1)), np.diff(feature)), axis=1)
+                feature_diff = np.concatenate((np.zeros((1, feature.shape[1])), np.diff(feature, axis=0)), axis=0)
                 feature_diff = np.clip(feature_diff, a_min=0, a_max=None)
-                feature = np.concatenate((feature, feature_diff), axis=0)
+                feature = np.concatenate((feature, feature_diff), axis=1)
                 
 #                mean = np.concatenate((mean, mean), axis=0)
 #                var = np.concatenate((var, var), axis=0)
@@ -289,37 +287,37 @@ class DataGenerator(tf.keras.utils.Sequence):
                 feature = np.concatenate((feature, 1*beats.reshape((1, self.sequential_frames)), 1*downbeats.reshape((1, self.sequential_frames))), axis=0)
             
         # if the network is a CBRNN
-        elif self.task == 'CBRNN':
+        elif self.model == 'CBRNN':
             padding = int((self.context_frames-1)/2)
             if not self.diff:
                 if self.beats_and_downbeats:
-                    feature = np.empty((self.sequential_frames, spectro.shape[0]+2, self.n_bins))  
+                    feature = np.empty((self.sequential_frames, self.context_frames, spectro.shape[0]+2))  
                 else:
-                    feature = np.empty((self.sequential_frames, spectro.shape[0], self.n_bins))
+                    feature = np.empty((self.sequential_frames, self.context_frames, spectro.shape[0]))
             elif self.diff:
 #                mean = np.concatenate((mean, mean), axis=0)
 #                var = np.concatenate((var, var), axis=0)
                 if self.beats_and_downbeats:
-                    feature = np.empty((self.sequential_frames, spectro.shape[0]*2+2, self.n_bins))
+                    feature = np.empty((self.sequential_frames, self.context_frames, spectro.shape[0]*2+2))
                 else:
-                    feature = np.empty((self.sequential_frames, spectro.shape[0]*2, self.n_bins))
+                    feature = np.empty((self.sequential_frames, self.context_frames, spectro.shape[0]*2))
             
             for i in range(self.sequential_frames):
                 if ID[1]+i+padding >= spectro_length:
                     if ID[1]+i-padding >= spectro_length:
-                        temp_feature = np.zeros((spectro.shape[0], self.n_bins))
+                        temp_feature = np.zeros((self.context_frames, spectro.shape[0]))
                     else:
-                        temp_feature = np.concatenate((spectro[:, (ID[1]+i-padding):], np.zeros((spectro.shape[0], padding-(spectro_length-(ID[1]+i))+1))), axis=1)
+                        temp_feature = np.concatenate((spectro[:, ID[1]+i-padding:].T, np.zeros((padding-(spectro_length-(ID[1]+i))+1, spectro.shape[0]))), axis=0)
                 elif ID[1]+i < padding :
-                    temp_feature = np.concatenate((np.zeros((spectro.shape[0], padding-(ID[1]+i))), spectro[:, :ID[1]+i+padding+1]), axis=1)
+                    temp_feature = np.concatenate((np.zeros((padding-(ID[1]+i), spectro.shape[0])), spectro[:, :ID[1]+i+padding+1].T), axis=0)
                 else:
-                    temp_feature = spectro[:, (ID[1]+i-padding):(ID[1]+i+padding+1)]
+                    temp_feature = spectro[:, (ID[1]+i-padding):(ID[1]+i+padding+1)].T
                 
                 if self.diff == True:
-                    temp_feature_diff = np.concatenate((np.zeros((spectro.shape[0], 1)), np.diff(temp_feature)), axis=1)
+                    temp_feature_diff = np.concatenate((np.zeros((1, spectro.shape[0])), np.diff(temp_feature, axis=0)), axis=0)
                     temp_feature_diff = np.clip(temp_feature_diff, a_min=0, a_max=None)
                     
-                    temp_feature = np.concatenate((temp_feature, temp_feature_diff), axis=0)                  
+                    temp_feature = np.concatenate((temp_feature, temp_feature_diff), axis=1)                  
                 
                 
 #                print(temp_feature.shape, mean.shape, var.shape)
@@ -354,10 +352,6 @@ class DataGenerator(tf.keras.utils.Sequence):
                     beats = self.dataset.data['beats_target'][audio_ID][ID[1]:ID[1]+self.sequential_frames]
                     downbeats = self.dataset.data['downbeats_target'][audio_ID][ID[1]:ID[1]+self.sequential_frames]
                 aux_input = np.stack([beats, downbeats], axis=1)
-                                      
-        
-        # transpose if RNN
-        feature = feature.T
             
         if not self.multiInput:
             return feature   
