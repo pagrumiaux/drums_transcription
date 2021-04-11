@@ -7,8 +7,25 @@ Created on Sun Dec  6 12:18:19 2020
 
 import tensorflow as tf
 
-#%%
-def cnn_model(context_frames, n_bins):    
+def cnn_model(context_frames, n_bins):
+    """Generate a tensorflow.keras.Model describing a CNN.
+
+    Parameters
+    ----------
+    context_frames : int
+        number of frames on each side of the analyzed frame, e.g. 
+        context_frames=9 leads to a temporal dimension of size 2*9+1=19
+        frames.
+    n_bins : int
+        number of frequency bins in the frequency dimension.
+
+    Returns
+    -------
+    tensorflow.keras.Model
+        Model containing all the layers (still need to be compiled with
+        model.compile(), see training.py). The input is a magnitude 
+        spectrogram of shape (2*context_frames+1, n_bins, 1)
+    """
     # input layer
     input_shape = (context_frames, n_bins, 1)
     input0 = tf.keras.Input(shape=input_shape, name='input0')
@@ -70,6 +87,24 @@ def cnn_model(context_frames, n_bins):
     return model
 
 def rnn_model(n_frames, n_bins, units):
+    """Generate a tensorflow.keras.Model describing a RNN.
+
+    Parameters
+    ----------
+    n_frames : int
+        number of frames for temporal analysis by the RNN.
+    n_bins : int
+        number of frequency bins in the frequency dimension.
+    units : int
+        number of units for the GRU layers.
+
+    Returns
+    -------
+    tensorflow.keras.Model
+        Model containing all the layers (still need to be compiled with
+        model.compile(), see training.py). The input is a magnitude 
+        spectrogram of shape (n_frames, n_bins)
+    """
     # input layer
     input_shape = (n_frames, n_bins)
     input0 = tf.keras.Input(shape=input_shape, name='input0')
@@ -88,7 +123,33 @@ def rnn_model(n_frames, n_bins, units):
     model = tf.keras.models.Model(inputs=input0, outputs=output)
     return model
 
-def cbrnn_model(n_frames, context_frames, n_bins, units):
+def crnn_model(n_frames, context_frames, n_bins, units):
+    """Generate a tensorflow.keras.Model describing a CRNN.
+
+    Parameters
+    ----------
+    n_frames : int
+        number of spectrograms of size [2*context_frames+1, n_bins, 1] 
+        for temporal analysis by the RNN part. Each spectrogram is 
+        independently processed by the CNN part and the resulting outputs
+        are putting in a temporal series as input into the RNN part.
+    context_frames : int
+        number of frames on each side of the analyzed frame, e.g. 
+        context_frames=9 leads to a temporal dimension of size 2*9+1=19
+        frames.
+    n_bins : int
+        number of frequency bins in the frequency dimension.
+    units : int
+        number of units for the GRU layers.
+
+    Returns
+    -------
+    tensorflow.keras.Model
+        Model containing all the layers (still need to be compiled with
+        model.compile(), see training.py). The input of the model is a 
+        series of magnitude spectrograms of shape (n_frames, context_frames n_bins, 1)
+    """
+
     # CNN input layer
     cnn_input_shape = (context_frames, n_bins, 1)
     cnn_input = tf.keras.Input(shape=cnn_input_shape, name='cnn_input')
@@ -148,7 +209,7 @@ def cbrnn_model(n_frames, context_frames, n_bins, units):
     # RNN output
     rnn_output = tf.keras.layers.Dense(units=3, activation='sigmoid', name='rnn_output')(bgru02)
     
-    # CBRNN model
-    cbrnn_model = tf.keras.Model(inputs=rnn_input, outputs=rnn_output)
+    # crnn model
+    crnn_model = tf.keras.Model(inputs=rnn_input, outputs=rnn_output)
     
-    return cbrnn_model
+    return crnn_model
