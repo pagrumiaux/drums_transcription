@@ -17,15 +17,22 @@ import time
 import datetime
 # import postProcessing
 
+#%% tf settings
+devices = tf.config.experimental.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(devices[0], True)
+
 #%%
 folder_rbma = "./datasets/RBMA_13/"
-folder_smt = "./datasets/SMT_DRUMS/"
-folder_enst = "./datasets/ENST_drums/"
-folder_bb = "./datasets/billboard/"
+# folder_rbma = None
+# folder_smt = "./datasets/SMT_DRUMS/"
+folder_smt = None
+# folder_enst = "./datasets/ENST_drums/"
+folder_enst = None
+# folder_bb = "./datasets/billboard/"
 
 
 #%% Training parameters
-params_train = {'batch_size': 32,
+params_train = {'batch_size': 64,
           'model': 'RNN',
           'n_bins': 168,
           'sequential_frames': 100,          
@@ -69,12 +76,10 @@ print('Training, validation and test IDs created')
 
 #%% instantiating the training and validation generators
 params_train['dataset'] = dataset
-
 params_valid = copy.deepcopy(params_train)
 
 params_train['list_IDs'] = train_IDs
 params_valid['list_IDs'] = valid_IDs
-
 
 train_generator = DataGenerator(**params_train)
 valid_generator = DataGenerator(**params_valid)
@@ -82,8 +87,9 @@ valid_generator = DataGenerator(**params_valid)
 print("Training and validation generators instantiated.")
 
 #%% model creation
-model_name = "rnn_contexteFrames9"
+model_name = "rnn_100frames_RBMA"
 
+# parameters
 rnn_units = 30
 
 if params_train['model'] == 'CNN':
@@ -99,17 +105,17 @@ model.compile(optimizer=adam,
               metrics=['categorical_accuracy'])
 
 date = datetime.datetime.now().strftime("%Y-%m-%d")
-model_path = "new_models/" + date + "_" + model_name
+model_path = "models/" + date + "_" + model_name
 
 print(f'Model will be saved in {model_path}')
 print('Model architecture :')
 print(model.summary())
 
 #%% training
-epochs = 50 
+epochs = 300
 
 earlyStop = tf.keras.callbacks.EarlyStopping(monitor = 'val_categorical_accuracy',
-                                             patience = 10
+                                             patience = 50
                                             )
 saveBest = tf.keras.callbacks.ModelCheckpoint(model_path, 
                                               monitor = 'val_categorical_accuracy', 
@@ -118,7 +124,7 @@ saveBest = tf.keras.callbacks.ModelCheckpoint(model_path,
                                              )
 reduceLR = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_categorical_accuracy', 
                                                 factor = 0.33,
-                                                patience = 5,
+                                                patience = 10,
                                                 verbose = 1
                                                )
 

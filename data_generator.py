@@ -9,7 +9,42 @@ import numpy as np
 import tensorflow as tf
 
 class DataGenerator(tf.keras.utils.Sequence):
-    'Generates data for Keras'
+    """ Data generator for keras. Uses the IDs in the Dataset object to
+    extract the data for a particular training example.
+
+    Attributes
+    ----------
+    self.n_bins : int
+        Number of frequency bins in the input features.
+    self.batch_size : int
+        Batch size of training.
+    self.shuffle : bool
+        To put the training examples in a random order or not.
+    self.model : str
+        Model to train : 'cnn', 'rnn' or 'crnn'.
+    self.list_IDs : list of int
+        IDs corresponding to this generator (either training or test).
+    self.dataset : Dataset object
+        Dataset in which the generator extract the data.
+    self.context_frames : int
+        Number of context frames on the left and right of the analyzed
+        frame, for 'cnn' and 'crnn'.
+    self.sequential_frames : int
+        Number of analyzed frame in the sequence, for 'rnn' and 'crnn'.
+    self.diff : bool
+        Use difference spectrograms instead of spectrograms
+    self.beats_and_downbeats : bool
+        Use beats and downbeats additional input information
+    self.multiTask : bool
+        Prepare the data for multitask network
+    self.teacher = teacher
+        TODO
+    self.multiInput = multiInput
+        Generate data for multitask network
+    self.solo_drum = solo_drum
+        If ENST-drums is used with solo tracks onlyy
+
+    """    
     def __init__(self, 
                  n_bins, 
                  model,
@@ -43,17 +78,54 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.solo_drum = solo_drum
         
     def __len__(self):
+        """Return the number of examples in the generator
+
+        Returns
+        -------
+        int
+            Generator length
+        """        
         return len(self.list_IDs)//self.batch_size
 
     
     def __getitem__(self, idx):
+        """Function which picks batch_size examples starting from the
+        given parameter
+
+        Parameters
+        ----------
+        idx : int
+            ID of the first example to extract
+
+        Returns
+        -------
+        input_features : numpy.ndarray
+            Batch of input features.
+        target : numpy.ndarray
+            Batch of targets.
+        """        
         idx_batch = self.list_IDs[idx*self.batch_size: (idx+1)*self.batch_size]
         input_feature, target = self.data_load(idx_batch)
         
         return input_feature, target
     
     def data_load(self, idx_batch, solo_drum = None):
-        'Generates data of batch_size samples'
+        """Function that load the data into a batch.
+
+        Parameters
+        ----------
+        idx_batch : int
+            Index of the first example in the batch.
+        solo_drum : [type], optional
+            use solo tracks of ENST-drums dataset or not, by default None
+
+        Returns
+        -------
+        input_features : numpy.ndarray
+            Batch of input features.
+        target : numpy.ndarray
+            Batch of targets.
+        """        
         
         if not self.multiTask:
             target_dim = 3
@@ -102,7 +174,7 @@ class DataGenerator(tf.keras.utils.Sequence):
                         target[i, :, 3] = self.dataset.data['beats_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
                         target[i, :, 4] = self.dataset.data['downbeats_target'][ID[0]][ID[1]:ID[1]+self.sequential_frames]
                 
-        elif self.model == 'CBRNN':
+        elif self.model == 'crnn':
             if not self.multiInput:
                 input_feature = np.empty((self.batch_size, self.sequential_frames, self.context_frames, self.n_bins, 1))
             else:
@@ -159,10 +231,21 @@ class DataGenerator(tf.keras.utils.Sequence):
         
         
     def on_epoch_end(self):
+        """Function to provide for tf.keras, used to shuffle examples 
+        after each epoch.
+        """        
         if self.shuffle:
             np.random.shuffle(self.list_IDs)
 
     def extract_feature(self, ID):
+        """Extract a portion of the stored signals for the given ID,
+        and depends on parameters and model.
+
+        Parameters
+        ----------
+        ID : int
+            ID of the audio signal to extract in Dataset object
+        """        
         audio_ID = ID[0]
         spectro = self.dataset.data['mel_spectrogram'][audio_ID]
         spectro_length = spectro.shape[1]
@@ -286,8 +369,8 @@ class DataGenerator(tf.keras.utils.Sequence):
                 
                 feature = np.concatenate((feature, 1*beats.reshape((1, self.sequential_frames)), 1*downbeats.reshape((1, self.sequential_frames))), axis=0)
             
-        # if the network is a CBRNN
-        elif self.model == 'CBRNN':
+        # if the network is a crnn
+        elif self.model == 'crnn':
             padding = int((self.context_frames-1)/2)
             if not self.diff:
                 if self.beats_and_downbeats:

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Wed Feb 21 15:51:03 2018
@@ -10,11 +9,59 @@ import os
 import numpy as np
 from math import fmod, floor
 import xml.etree.ElementTree as et
-from utilities import spreadTargetFunctions
+from utils.utilities import spreadTargetFunctions
 import pickle
 
-
 class Dataset:
+    """A class representing a dataset. It loads the data without processing
+    and is useful for visualizing the data, the target, the annotations, etc.
+    It also splits the data into training and test sets.
+
+    Attributes
+    ----------
+    data : dict
+        Dictionnary containing all the data, stored in lists.
+        Corresponding fields for the same data are at the same 
+        position in each field list.
+    split : dict
+        Dictionnary containing the IDs split into train and test sets,
+        and separated according to the initial datasets.
+    standardization : dict
+        Dictionnary containing the mean and standard deviation arrays
+        for input standardization
+    folder_rbma : str
+        Path to the folder containing RBMA 13 dataset
+    folder_smt : str
+        Path to the folder containing SMT-Drums dataset
+    folder_enst : str
+        Path to the folder containing ENST-Drums dataset
+    enst_solo : bool
+        UsIf True, we use only the drums part of the tracks
+        in the ENST dataset, otherwise we use the mixed tracks.
+
+    Methods
+    -------
+    load_dataset(bb_annotations_folder = None, spread_length = None)
+        Load all the data from the specified folders and store it into
+        self.data dictionnary. If a folder path attributes is not specified,
+        data is not loaded.
+    load_data(self, dataset_name, enst_solo=False)
+        Load the filenames, spectrograms, annotations, splits and standardization arrays, from a specific dataset folder. 
+    extract_audio_names(dataset_name)
+        Extract the audio filenames for a specific dataset folder.
+    extract_data_rbma(audio_name)
+        Extract the spectrograms and annotations for RBMA 13 dataset.
+    extract_data_smt(audio_name)
+        Extract the spectrograms and annotations for SMT-Drums dataset.
+    extract_data_enst(audio_name)
+        Extract the spectrograms and annotations for ENST-Drums dataset.
+    extract_data_bb(audio_name, bb_annotations_folder)
+        Extract the spectrograms and annotations for Billboard 800 dataset.
+    annotation_to_target(annotations, n_frames, frame_rate = 100)
+        Transform the extracted annotations into target for the training.
+    generate_IDs(task, stride = 0, context_frames = 25, sequential_frames = 100)
+        Generate the training and testing examples IDs.
+    """
     def __init__(self, folder_rbma=None, folder_smt=None, folder_enst=None, enst_solo=False):
         self.data = {'audio_name': [], 'mel_spectrogram': [], 'dataset': [],
                      'BD_target': [], 'SD_target': [], 'HH_target': [],
@@ -40,7 +87,17 @@ class Dataset:
     def __len__(self):
         return len(self.data['audio_name'])
     
-    def load_dataset(self, bb_annotations_folder = None, spread_length = None):        
+    def load_dataset(self, bb_annotations_folder = None, spread_length = None):    
+        """Load the data from the dataset folder (folder_rbma, folder_smt
+        and folder_enst) and put them into self.data dictionnary.
+
+        Parameters
+        ----------
+        bb_annotations_folder : [type], optional TODO
+            [description], by default None
+        spread_length : [type], optional
+            [description], by default None
+        """
         # RBMA load
         if self.folder_rbma is not None:
             self.load_data('rbma')
@@ -96,7 +153,15 @@ class Dataset:
         # self.audio_names = audio_names_rbma + audio_names_smt
     
     def load_data(self, dataset_name, enst_solo=False):
-        
+        """Intermediary function to load data specifically for one dataset.
+
+        Parameters
+        ----------
+        dataset_name : str
+            dataset name : 'rbma', 'smt' or 'enst'
+        enst_solo : bool, optional
+            Use solo part of the ENST dataset or not, by default False
+        """        
         # Verify if dataset_name is correct
         if dataset_name not in ['rbma', 'enst', 'smt']:
             raise ValueError("Unknown dataset name. It should be one of the \
@@ -106,7 +171,7 @@ class Dataset:
         # Extract audio file names within the dataset folder
         audio_names = self.extract_audio_names(dataset_name)
         
-        # Extract annotation for all audio files
+        # Extract data and annotation for all audio files
         for audio in audio_names:
             self.data['audio_name'].append(audio)
             
@@ -172,7 +237,19 @@ class Dataset:
                 with open(self.folder_enst + "data/other/train_mel_var", "rb") as f:
                     self.standardization['enst_mel_var'] = pickle.load(f)
 
-    def extract_audio_names(self, dataset_name):     
+    def extract_audio_names(self, dataset_name):
+        """Extract the filename of the tracks in the specified dataset folder.
+
+        Parameters
+        ----------
+        dataset_name : str
+            Dataset name, must be 'rbma', 'smt' or 'enst'.
+
+        Returns
+        -------
+        list of str
+            List of the filenames without extension.
+        """             
         if dataset_name == 'rbma':
             if not os.path.isdir(self.folder_rbma):
                 raise ValueError(f'RBMA folder not found : {self.folder_rbma}')
@@ -212,11 +289,31 @@ class Dataset:
     #     return audio_names_bb
         
     def extract_data_rbma(self, audio_name, sr = 44100):
-        """ Compute the mel spectrogram of ONE track and extract the annotations
-            input:
-                name of the single audio track to extraction information without extension
-            
-        """
+        """Compute the mel spectrogram of ONE track and extract the annotations
+        for RBMA 13 dataset
+
+        Parameters
+        ----------
+        audio_name : str
+            Filename to extract data
+        sr : int, optional
+            sampling rate, by default 44100
+
+        Returns
+        -------
+        mel_spectrogram : np.array
+            Numpy array representing the mel spectrogram
+        BD_annotations : list of float
+            Contains the timestamps of all bass drum hits in the track
+        SD_annotations : list of float
+            Contains the timestamps of all snare drum hits in the track
+        HH_annotations : list of float
+            Contains the timestamps of all hi-hat hits in the track
+        beats_annotations : list of float
+            Contains the timestamps of all the beats in the track
+        downbeats_annotations : list of float
+            Contains the timestamps of all the downbeats in the track
+        """   
         # annotations variables initialization
         BD_annotations = []
         SD_annotations = []
@@ -246,7 +343,31 @@ class Dataset:
         
         return mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations
                          
-    def extract_data_smt(self, audio_name, sr = 44100):
+    def extract_data_smt(self, audio_name):
+        """Compute the mel spectrogram of ONE track and extract the annotations
+        for SMT-Drums dataset
+
+        Parameters
+        ----------
+        audio_name : str
+            Filename to extract data
+
+        Returns
+        -------
+        mel_spectrogram : np.array
+            Numpy array representing the mel spectrogram
+        BD_annotations : list of float
+            Contains the timestamps of all bass drum hits in the track
+        SD_annotations : list of float
+            Contains the timestamps of all snare drum hits in the track
+        HH_annotations : list of float
+            Contains the timestamps of all hi-hat hits in the track
+        beats_annotations : list of float
+            Contains the timestamps of all the beats in the track
+        downbeats_annotations : list of float
+            Contains the timestamps of all the downbeats in the track
+        """   
+
         # annotations variables initialization
         BD_annotations = []
         SD_annotations = []
@@ -284,7 +405,31 @@ class Dataset:
                 
         return mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations
     
-    def extract_data_enst(self, audio_name, sr = 44100):
+    def extract_data_enst(self, audio_name):
+        """Compute the mel spectrogram of ONE track and extract the annotations
+        for ENST-Drums dataset
+
+        Parameters
+        ----------
+        audio_name : str
+            Filename to extract data
+
+        Returns
+        -------
+        mel_spectrogram : np.array
+            Numpy array representing the mel spectrogram
+        BD_annotations : list of float
+            Contains the timestamps of all bass drum hits in the track
+        SD_annotations : list of float
+            Contains the timestamps of all snare drum hits in the track
+        HH_annotations : list of float
+            Contains the timestamps of all hi-hat hits in the track
+        beats_annotations : list of float
+            Contains the timestamps of all the beats in the track
+        downbeats_annotations : list of float
+            Contains the timestamps of all the downbeats in the track
+        """
+
         # annotations variables initialization
         BD_annotations = []
         SD_annotations = []
@@ -298,7 +443,7 @@ class Dataset:
         else:
             mel_spectrogram = np.load(self.folder_enst + "data/log_mel/mix66/" + audio_name + ".npy")
         
-                # annotations extraction
+        # annotations extraction
         with open(self.folder_enst + "annotations/drums/" + audio_name + ".txt", 'r') as f: # bass drum, snare drum and hihat annotations extraction
             lines = f.readlines()
             for line in lines:
@@ -314,7 +459,7 @@ class Dataset:
         root = tree.getroot()
         for seg in root.iter('{http://www.ircam.fr/musicdescription/1.1}segment'):
             t = seg.get('time')
-#            print(type(t))
+
             beattype = seg.find('{http://www.ircam.fr/musicdescription/1.1}beattype')
             db = beattype.get('measure')
             beats_annotations.append(max(float(t), 0))
@@ -324,7 +469,7 @@ class Dataset:
         
         return mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations
     
-    def extract_data_bb(self, audio_name, bb_annotations_folder, sr = 44100):
+    def extract_data_bb(self, audio_name, bb_annotations_folder):
         # annotations variables initialization
         mel_spectrogram = np.load(self.folder_bb + "data/log_mel/" + audio_name + ".npy")
         if bb_annotations_folder is not None:
@@ -353,13 +498,24 @@ class Dataset:
         return mel_spectrogram, BD_annotations, SD_annotations, HH_annotations, beats_annotations, downbeats_annotations
 
     
-    def annotation_to_target(self, annotations, n_frames, sr = 44100, frame_rate = 100):
-        """ Transform annotations list into target functions
-            input:
-                annotations : list of float that represents the positions in seconds
-                signal_length : length of the signal for the target function creation
-                frame_rate : number of frame per second for the target function
-        """
+    def annotation_to_target(self, annotations, n_frames, frame_rate = 100):
+        """Transform annotation lists into target format for the neural 
+        networks
+
+        Parameters
+        ----------
+        annotations : list of float
+            Annotation list containing all the timestamps
+        n_frames : int
+            total number of annotation frames
+        frame_rate : int, optional
+            Frame per second, by default 100
+
+        Returns
+        -------
+        [type]
+            [description]
+        """    
         if annotations is not None:
             target_function = np.zeros(n_frames)
             for item in annotations:
@@ -371,6 +527,24 @@ class Dataset:
             return None
     
     def generate_IDs(self, task, stride = 0, context_frames = 25, sequential_frames = 100):
+        """ Generate the IDs depending on several training parameters.
+
+        Parameters
+        ----------
+        task : str
+            type of neural network we use in the training : 'cnn', 'rnn' or 'crnn'
+        stride : int, optional
+            frame hop size, by default 0
+        context_frames : int, optional
+            Number of context frames for 'cnn' and 'crnn' tasks, by default 25
+        sequential_frames : int, optional
+            Number of frames in a sequence for 'rnn' and 'crnn', by default 100
+
+        Returns
+        -------
+        list of int
+            list of IDs for training
+        """    
         list_IDs = []
         n_audio = len(self.data['mel_spectrogram'])
         for i in range(n_audio):
@@ -382,7 +556,7 @@ class Dataset:
                             list_IDs.append((i, j))
                     else:
                         list_IDs.append((i, j))
-            elif task == 'RNN' or task == 'CBRNN':
+            elif task == 'RNN' or task == 'crnn':
                 for j in range(n_frames):
                     if fmod(j, sequential_frames) == 0:
                         list_IDs.append((i, j))
